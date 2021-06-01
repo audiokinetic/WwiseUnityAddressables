@@ -294,6 +294,135 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			OnBankLoaded(bank);
 		}
 
+		public bool LoadBankAsync(WwiseAddressableSoundBank bank, Queue<AsyncOperationHandle<WwiseSoundBankAsset>> handles, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true)
+		{
+			bank.decodeBank = decodeBank;
+			bank.saveDecodedBank = saveDecodedBank;
+			if (m_AddressableBanks.ContainsKey(bank.name))
+			{
+				m_AddressableBanks.TryGetValue(bank.name, out bank);
+			}
+			else if (addToBankDictionary)
+			{
+				m_AddressableBanks.TryAdd(bank.name, bank);
+			}
+
+			if (bank.loadState == BankLoadState.Unloaded || bank.loadState == BankLoadState.WaitingForInitBankToLoad)
+			{
+				if (!InitBankLoaded && bank.name != "Init")
+				{
+					bank.loadState = BankLoadState.WaitingForInitBankToLoad;
+					return false;
+				}
+			}
+			if (bank.loadState == BankLoadState.Loading)
+			{
+				bank.refCount += 1;
+				return false;
+			}
+
+			if (bank.loadState == BankLoadState.Loaded)
+			{
+				bank.refCount += 1;
+				return false;
+			}
+
+			bank.refCount += 1;
+			bank.loadState = BankLoadState.Loading;
+
+			AssetReferenceWwiseBankData bankData;
+			if (bank.Data.ContainsKey("SFX"))
+			{
+				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Loading {bank.name} bank");
+				bankData = bank.Data["SFX"];
+				bank.currentLanguage = "SFX";
+			}
+			else
+			{
+				var currentLanguage = AkSoundEngine.GetCurrentLanguage();
+				if (bank.Data.ContainsKey(currentLanguage))
+				{
+					bankData = bank.Data[currentLanguage];
+					bank.currentLanguage = currentLanguage;
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Loading {bank.name} - {currentLanguage}");
+				}
+				else
+				{
+					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
+					m_AddressableBanks.TryRemove(bank.name, out _);
+					return false;
+				}
+			}
+
+			var handle = bankData.LoadAssetAsync();
+			var asyncHandle = handle;
+			asyncHandle.Completed += operationHandle =>
+			{
+				if (asyncHandle.Status == AsyncOperationStatus.Succeeded)
+				{
+					bank.eventNames = new HashSet<string>(asyncHandle.Result.eventNames);
+					var data = asyncHandle.Result.RawData;
+					bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
+					var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID);
+					if (result == AKRESULT.AK_Success)
+					{
+						bank.soundbankId = bankID;
+					}
+					else
+					{
+						bank.soundbankId = INVALID_SOUND_BANK_ID;
+					}
+					bank.GCHandle.Free();
+
+					Addressables.Release(asyncHandle);
+				}
+
+				string destinationDir;
+				if (bank.StreamingMedia != null)
+				{
+					foreach (var language in bank.StreamingMedia.Keys)
+					{
+						if (language == "SFX")
+						{
+							destinationDir = UnityEngine.Application.persistentDataPath; ;
+						}
+						else
+						{
+							destinationDir = Path.Combine(UnityEngine.Application.persistentDataPath, language);
+						}
+
+						if (!Directory.Exists(destinationDir))
+						{
+							Directory.CreateDirectory(destinationDir);
+						}
+
+						foreach (var streamedAsset in bank.StreamingMedia[language].media)
+						{
+							if (streamedAsset == null)
+							{
+								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} soundbank is null");
+								continue;
+							}
+							var streamedHandle = streamedAsset.LoadAssetAsync();
+							var dir = destinationDir;
+							streamedHandle.Completed += asyncOperationHandle =>
+							{
+								AkAssetUtilities.UpdateWwiseFileIfNecessary(dir, streamedHandle.Result);
+								Addressables.Release(streamedHandle);
+							};
+						}
+					}
+				}
+
+				//Make sure the asset is cleared from memory
+				UnityEngine.Resources.UnloadUnusedAssets();
+
+				OnBankLoaded(bank);
+			};
+			
+			return true;
+		}
+
 #if UNITY_EDITOR
 		public void LoadBankEditor(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
 		{
