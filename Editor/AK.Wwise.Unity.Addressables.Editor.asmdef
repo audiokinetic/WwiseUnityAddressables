@@ -1,5 +1,6 @@
 {
     "name": "AK.Wwise.Unity.Addressables.Editor",
+    "rootNamespace": "AK.Wwise.Unity.WwiseAddressables",
     "references": [
         "AK.Wwise.Unity.MonoBehaviour.Editor",
         "Unity.Addressables.Editor",
