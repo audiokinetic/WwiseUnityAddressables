@@ -172,6 +172,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (!InitBankLoaded && bank.name != "Init")
 				{
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} bank will be loaded after the init bank is loaded");
 					bank.loadState = BankLoadState.WaitingForInitBankToLoad;
 					return;
 				}
@@ -193,11 +194,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (bank.Data == null)
 			{
-				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded - Bank reference not set");
+				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager : {bank.name} could not be loaded - Bank reference not set");
 				m_AddressableBanks.TryRemove(bank.name, out _);
 				return;
 			}
-
 
 			AssetReferenceWwiseBankData bankData;
 			if (bank.Data.ContainsKey("SFX"))
@@ -223,18 +223,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-#if UNITY_EDITOR
-			LoadBankEditor(bank, bankData);
-#else
 			LoadBankAsync(bank, bankData);
-#endif
 		}
 
 		public async void LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
 		{
 			var AsyncHandle = bankData.LoadAssetAsync();
 			await AsyncHandle.Task;
-			if (AsyncHandle.Status == AsyncOperationStatus.Succeeded)
+
+			if (AsyncHandle.IsValid() && AsyncHandle.Status == AsyncOperationStatus.Succeeded)
 			{
 				bank.eventNames = new HashSet<string>(AsyncHandle.Result.eventNames);
 				var data = AsyncHandle.Result.RawData;
@@ -243,135 +240,73 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (result == AKRESULT.AK_Success)
 				{
 					bank.soundbankId = bankID;
+					bank.loadState = BankLoadState.Loaded;
 				}
 				else
 				{
 					bank.soundbankId = INVALID_SOUND_BANK_ID;
+					bank.loadState = BankLoadState.LoadFailed;
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Sound Engine failed to load {bank.name} SoundBank");
 				}
 				bank.GCHandle.Free();
-
 				Addressables.Release(AsyncHandle);
-			}
 
-			string destinationDir;
-			if (bank.StreamingMedia != null)
-			{
-				foreach (var language in bank.StreamingMedia.Keys)
+				string destinationDir;
+				if (bank.StreamingMedia != null)
 				{
-					if (language == "SFX")
+					foreach (var language in bank.StreamingMedia.Keys)
 					{
-						destinationDir = UnityEngine.Application.persistentDataPath; ;
-					}
-					else
-					{
-						destinationDir = Path.Combine(UnityEngine.Application.persistentDataPath, language);
-					}
-
-					if (!Directory.Exists(destinationDir))
-					{
-						Directory.CreateDirectory(destinationDir);
-					}
-
-					foreach (var streamedAsset in bank.StreamingMedia[language].media)
-					{
-						if (streamedAsset == null)
+						if (language == "SFX")
 						{
-							UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} soundbank is null");
-							continue;
+							destinationDir = UnityEngine.Application.persistentDataPath; ;
 						}
-						var handle = streamedAsset.LoadAssetAsync();
-						await handle.Task;
+						else
+						{
+							destinationDir = Path.Combine(UnityEngine.Application.persistentDataPath, language);
+						}
 
-						AkAssetUtilities.UpdateWwiseFileIfNecessary(destinationDir, handle.Result);
-						Addressables.Release(handle);
+						if (!Directory.Exists(destinationDir))
+						{
+							Directory.CreateDirectory(destinationDir);
+						}
+
+						foreach (var streamedAsset in bank.StreamingMedia[language].media)
+						{
+							if (streamedAsset == null)
+							{
+								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} SoundBank is null");
+								continue;
+							}
+							var loadHandle = streamedAsset.LoadAssetAsync();
+							await loadHandle.Task;
+
+							if (loadHandle.IsValid() && loadHandle.Status == AsyncOperationStatus.Succeeded)
+							{
+								AkAssetUtilities.UpdateWwiseFileIfNecessary(destinationDir, loadHandle.Result);
+								Addressables.Release(loadHandle);
+							}
+							else
+							{
+								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Failed to load streaming media asset {streamedAsset.id} in {bank.name} SoundBank");
+							}
+						}
 					}
 				}
-			}
-
-			//Make sure the asset is cleared from memory
-			UnityEngine.Resources.UnloadUnusedAssets();
-
-			OnBankLoaded(bank);
-		}
-
-#if UNITY_EDITOR
-		public void LoadBankEditor(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
-		{
-			var p = UnityEditor.AssetDatabase.GetAssetPath(bankData.editorAsset);
-			var loadedBank = UnityEditor.AssetDatabase.LoadAssetAtPath<WwiseSoundBankAsset>(p);
-
-			bank.eventNames = new HashSet<string>(loadedBank.eventNames);
-			var data = loadedBank.RawData;
-			bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
-			var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID);
-			if (result == AKRESULT.AK_Success)
-			{
-				bank.soundbankId = bankID;
 			}
 			else
 			{
-				bank.soundbankId = INVALID_SOUND_BANK_ID;
-			}
-			bank.GCHandle.Free();
-
-			string outFolder = UnityEngine.Application.persistentDataPath;
-
-			if (!Directory.Exists(outFolder))
-			{
-				Directory.CreateDirectory(outFolder);
-			}
-
-			string destinationDir;
-			if (bank.StreamingMedia != null)
-			{
-				foreach (var language in bank.StreamingMedia.Keys)
-				{
-					if (language == "SFX")
-					{
-						destinationDir = UnityEngine.Application.persistentDataPath;
-					}
-					else
-					{
-						destinationDir = Path.Combine(UnityEngine.Application.persistentDataPath, language);
-					}
-
-					if (!Directory.Exists(destinationDir))
-					{
-						Directory.CreateDirectory(destinationDir);
-					}
-
-					foreach (var streamedAsset in bank.StreamingMedia[language].media)
-					{
-						if (streamedAsset == null)
-						{
-							UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} soundbank is null");
-							continue;
-						}
-
-						var mediaPath = UnityEditor.AssetDatabase.GetAssetPath(streamedAsset.editorAsset);
-						var media = UnityEditor.AssetDatabase.LoadAssetAtPath<WwiseStreamingMediaAsset>(mediaPath);
-						AkAssetUtilities.UpdateWwiseFileIfNecessary(destinationDir, media);
-					}
-				}
+				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
+				bank.loadState = BankLoadState.LoadFailed;
+				Addressables.Release(AsyncHandle);
 			}
 
 			//Make sure the asset is cleared from memory
 			UnityEngine.Resources.UnloadUnusedAssets();
-
 			OnBankLoaded(bank);
 		}
-#endif
-
+		
 		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = true)
 		{
-
-			if (bank.loadState == BankLoadState.Loading || bank.loadState == BankLoadState.WaitingForInitBankToLoad)
-			{
-				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Will unload {bank.name} when it has finished loading");
-				m_banksToUnload.TryAdd(bank.name, bank.name);
-				return;
-			}
-
 			if (!ignoreRefCount)
 			{
 				bank.refCount = Math.Max(0, bank.refCount - 1);
@@ -381,29 +316,42 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
+			if (bank.loadState == BankLoadState.Loading)
+			{
+				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} will be unloaded after it is done loading");
+				m_banksToUnload.TryAdd(bank.name, bank.name);
+				return;
+			}
+
 			if (bank.loadState == BankLoadState.Loaded)
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
 				AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
-				bank.soundbankId = 0;
-				bank.loadState = BankLoadState.Unloaded;
-				bank.refCount = 0;
 
-				if (removeFromBankDictionary)
+			}
+
+			m_banksToUnload.TryRemove(bank.name, out _);
+			bank.soundbankId = 0;
+			bank.refCount = 0;
+			bank.loadState = BankLoadState.Unloaded;
+
+			if (removeFromBankDictionary)
+			{
+				if (!m_AddressableBanks.TryRemove(bank.name, out _))
 				{
-					if (!m_AddressableBanks.TryRemove(bank.name, out _))
-					{
 #if UNITY_EDITOR
-						if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && !UnityEditor.EditorApplication.isPlaying)
-						{
-							return;
-						}
+					// Don't unnecessarily log messages when caused by domain reload
+					if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && !UnityEditor.EditorApplication.isPlaying)
+					{
+						return;
+					}
 #endif
-						UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Did not unload {bank.name} as it was not in the list of loaded banks");
+					if (InitBank && bank.name != InitBank.name)
+					{
+						UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Unloaded {bank.name}, but it was not in the list of loaded banks");
 					}
 				}
 			}
-
 		}
 
 		public bool LoadedBankContainsEvent(string eventName, uint eventId, object eventObject, string methodName, Type[] methodArgTypes, object[] methodArgs)
@@ -428,11 +376,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_AkEventType == null)
 				{
-#if UNITY_EDITOR
 					var assembly = Assembly.Load("AK.Wwise.Unity.API.WwiseTypes");
-#else
-					var assembly = Assembly.Load("AK.Wwise.Unity.API.WwiseTypes.dll");
-#endif
 					m_AkEventType = assembly.GetType("AK.Wwise.Event");
 				}
 				return m_AkEventType;
@@ -441,42 +385,49 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		private void OnBankLoaded(WwiseAddressableSoundBank bank)
 		{
-			bank.loadState = BankLoadState.Loaded;
-			UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
+			if (bank.loadState == BankLoadState.Loaded)
+			{
+				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
 
+				if (InitBankLoaded && bank.name == InitBank.name)
+				{
+					foreach (var b in m_AddressableBanks.Values)
+					{
+						if (b.loadState == BankLoadState.WaitingForInitBankToLoad)
+						{
+							LoadBank(b, b.decodeBank, b.saveDecodedBank);
+						}
+					}
+				}
+
+				//Fire any events that were waiting on the bank load
+				var eventsToRemove = new List<uint>();
+				foreach (var e in m_eventsToFireOnBankLoad)
+				{
+					if (bank.eventNames.Contains(e.Value.eventName))
+					{
+						UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
+						MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
+						handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
+						eventsToRemove.Add(e.Key);
+					}
+				}
+
+				foreach (var e in eventsToRemove)
+				{
+					m_eventsToFireOnBankLoad.TryRemove(e, out _);
+				}
+			}
+
+			//Reset bank state if load failed
+			if (bank.loadState == BankLoadState.LoadFailed)
+			{
+				UnloadBank(bank, ignoreRefCount : true);
+			}
+			
 			if (m_banksToUnload.Keys.Contains(bank.name))
 			{
 				UnloadBank(bank);
-			}
-
-			if (InitBankLoaded && bank.name == InitBank.name)
-			{
-				foreach (var b in m_AddressableBanks.Values)
-				{
-					if (b.loadState == BankLoadState.WaitingForInitBankToLoad)
-					{
-						LoadBank(b, b.decodeBank, b.saveDecodedBank);
-					}
-
-				}
-			}
-
-			//fire any events that were waiting on the bank load
-			var eventsToRemove = new List<uint>();
-			foreach (var e in m_eventsToFireOnBankLoad)
-			{
-				if (bank.eventNames.Contains(e.Value.eventName))
-				{
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
-					MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
-					handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
-					eventsToRemove.Add(e.Key);
-				}
-			}
-
-			foreach (var e in eventsToRemove)
-			{
-				m_eventsToFireOnBankLoad.TryRemove(e, out _);
 			}
 		}
 
