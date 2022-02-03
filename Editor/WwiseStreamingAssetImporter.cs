@@ -2,10 +2,16 @@
 
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Experimental.AssetImporters;
+
 using UnityEngine;
 using System.IO;
 using System.Security.Cryptography;
+
+#if UNITY_2021_1_OR_NEWER
+using UnityEditor.AssetImporters;
+#else
+using UnityEditor.Experimental.AssetImporters;
+#endif
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
@@ -18,7 +24,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			string platform;
 			string language;
-			AkAssetUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
+			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
 
 			if (platform == null)
 			{

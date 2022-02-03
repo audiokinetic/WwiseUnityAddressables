@@ -1,5 +1,6 @@
 {
     "name": "AK.Wwise.Unity.Addressables",
+    "rootNamespace": "",
     "references": [
         "Unity.Addressables",
         "Unity.ResourceManager",

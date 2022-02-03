@@ -10,6 +10,9 @@ using UnityEngine;
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
+	/*
+	 * The wwise build script ONLY builds the bundles automatically generated groupes (e.g. WwiseData_[platform] and  WwiseData_[platform]_InitBank) for the target build platform.
+	 */
 	[CreateAssetMenu(fileName = "BuildScriptWwisePacked.asset", menuName = "Addressables/Content Builders/Wwise Build Script")]
 	public class BuildScriptWwisePacked : BuildScriptPackedMode
 	{
@@ -21,8 +24,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return "Wwise Build Script";
 			}
 		}
-
 		/// <inheritdoc />
+		/// 
 		protected override string ProcessGroup(AddressableAssetGroup assetGroup, AddressableAssetsBuildContext aaContext)
 		{
 			if (assetGroup == null)
@@ -43,7 +46,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		private void IncludePlatformSpecificBundles(UnityEditor.BuildTarget target)
 		{
-			var wwisePlatform = AkAssetUtilities.GetWwisePlatformName(target);
+			var wwisePlatform = AkAddressablesEditorUtilities.GetWwisePlatformNameFromBuildTarget(target);
+
 			var addressableSettings = AddressableAssetSettingsDefaultObject.Settings;
 
 			if (addressableSettings == null)
@@ -54,12 +58,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			foreach (var group in addressableSettings.groups)
 			{
-				var include = true;
-				if (group.Name.Contains("WwiseData")){
-					if (!group.Name.Contains(wwisePlatform) && !group.name.Contains("AddressableSoundbanks"))
+				var include = false;
+
+				if (group.Name.Contains("WwiseData"))
+				{
+					if (group.Name.Contains(wwisePlatform))
 					{
-						include = false;
+						include = true;
 					}
+
 					var bundleSchema = group.GetSchema<BundledAssetGroupSchema>();
 					if (bundleSchema != null)
 						bundleSchema.IncludeInBuild = include;

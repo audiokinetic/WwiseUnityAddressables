@@ -3,9 +3,13 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.IO;
-
-using UnityEditor.Experimental.AssetImporters;
 using UnityEngine;
+
+#if UNITY_2021_1_OR_NEWER
+using UnityEditor.AssetImporters;
+#else
+using UnityEditor.Experimental.AssetImporters;
+#endif
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
@@ -18,18 +22,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			string platform;
 			string language;
-			AkAssetUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
+			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
 
 			if (platform == null)
 			{
 				return;
 			}
 
-			var soundbankInfos = AkAssetUtilities.ParsePlatformSoundbanksXML(platform, assetName);
+			var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, assetName);
 
 			if (!soundbankInfos.ContainsKey(assetName))
 			{
-				Debug.LogWarning($"Could not properly parse soundbank at {ctx.assetPath} - skipping it.");
+				Debug.LogWarning($"Skipping {ctx.assetPath} as it was not parsed in SoundbanksInfo.xml. Perhaps this bank no longer exists in the wwise project?");
 				return;
 			}
 			WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();

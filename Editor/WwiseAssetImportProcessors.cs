@@ -36,7 +36,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (wwiseAssetsModified)
 			{
-				AkAssetUtilities.ClearSoundbankInfo();
+				AkAddressablesEditorUtilities.ClearSoundbankInfo();
 			}
 
 			return paths;
@@ -152,7 +152,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					string platform;
 					string language;
-					AkAssetUtilities.ParseAssetPath(bankPath, out platform, out language);
+					AkAddressablesEditorUtilities.ParseAssetPath(bankPath, out platform, out language);
 
 					// First find or create AddressableBank asset
 					WwiseAddressableSoundBank addressableBankAsset = null;
@@ -162,7 +162,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						if (results.Length > 0)
 						{
 							string addressableBankGuid = results.First();
-							addressableBankAsset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(AssetDatabase.GUIDToAssetPath(addressableBankGuid));
+							string addressableBankPath = AssetDatabase.GUIDToAssetPath(addressableBankGuid);
+							addressableBankAsset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankPath);
 						}
 
 						string addressableBankAssetDirectory = AkAssetUtilities.GetSoundbanksPath();
@@ -232,10 +233,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					if (!string.IsNullOrEmpty(platform))
 					{
-						var soundbankInfos = AkAssetUtilities.ParsePlatformSoundbanksXML(platform, name);
-						addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
-						addressableBankAsset.AddOrUpdate(platform, language, new AssetReferenceWwiseBankData(AssetDatabase.AssetPathToGUID(bankPath)));
-						EditorUtility.SetDirty(addressableBankAsset);
+						var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
+						if (soundbankInfos.ContainsKey(name))
+						{
+							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
+							addressableBankAsset.AddOrUpdate(platform, language, new AssetReferenceWwiseBankData(AssetDatabase.AssetPathToGUID(bankPath)));
+							EditorUtility.SetDirty(addressableBankAsset);
+						}
+						else
+						{
+							Debug.LogWarning($"Could not update {addressableBankAsset.name} with bank located at {bankPath}");
+						}
+
 					}
 				}
 			}
@@ -265,7 +274,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			if (!bankScriptableObjectUpdated)
 			{
-				AkAssetUtilities.FindAndSetBankReference(asset, bankName);
+				AkAddressablesEditorUtilities.FindAndSetBankReference(asset, bankName);
 			}
 		}
 
@@ -280,15 +289,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					string platform;
 					string language;
-					AkAssetUtilities.ParseAssetPath(assetPath, out platform, out language);
-					var soundbankInfos = AkAssetUtilities.ParsePlatformSoundbanksXML(platform, name);
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+					var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
 
 					var bankNames = soundbankInfos.eventToSoundBankMap[name];
 					foreach (var bankName in bankNames)
 					{
-						var bankAssetDir = Path.GetDirectoryName(assetPath);
-						var addressableBankAssetDir = AkAssetUtilities.GetSoundbanksPath();
-						var addressableBankAssetPath = System.IO.Path.Combine(addressableBankAssetDir, bankName + ".asset");
+						string bankAssetDir = Path.GetDirectoryName(assetPath);
+						string addressableBankAssetDir = AkAssetUtilities.GetSoundbanksPath();
+						string addressableBankAssetPath = System.IO.Path.Combine(addressableBankAssetDir, bankName + ".asset");
 						var bankAsset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankAssetPath);
 
 						if (bankAsset == null)
@@ -298,8 +307,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 						if (!string.IsNullOrEmpty(platform))
 						{
+							List<string> MediaIds = soundbankInfos[bankName][language].streamedFiles.Select(streamedFile => streamedFile.id).ToList();
 							bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[bankName].Keys.ToList());
-							bankAsset.SetStreamingMedia(platform, language, bankAssetDir, soundbankInfos[bankName][language].streamedFiles);
+							bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
 							EditorUtility.SetDirty(bankAsset);
 						}
 					}
@@ -322,7 +332,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					string platform;
 					string language;
-					AkAssetUtilities.ParseAssetPath(assetPath, out platform, out language);
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -353,7 +363,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					string platform;
 					string language;
-					AkAssetUtilities.ParseAssetPath(assetPath, out platform, out language);
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -399,7 +409,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				string platform;
 				string language;
-				AkAssetUtilities.ParseAssetPath(assetPath, out platform, out language);
+				AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 
 				if (parseGroupNames)
 				{

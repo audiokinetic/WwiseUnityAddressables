@@ -27,6 +27,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public HashSet<string> eventNames;
 		public int refCount;
 
+#if UNITY_EDITOR
+		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
+		public static GetWwisePlatformNameDelegate GetWwisePlatformNameFromBuildTarget;
+#endif
+
 		public Dictionary<string, AssetReferenceWwiseBankData> Data
 		{
 			get
@@ -63,14 +68,16 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					entry.Deserialize();
 				}
 			}
-#endif
+#else
 			CurrentPlatformAssets.Deserialize();
+#endif
 		}
 
 		public void OnBeforeSerialize()
 		{
 #if UNITY_EDITOR
-			string wwisePlatform = AkBasePathGetter.GetPlatformName();
+
+			string wwisePlatform = GetWwisePlatformNameFromBuildTarget(EditorUserBuildSettings.activeBuildTarget);
 			if (m_dataPerPlatformList != null)
 			{
 				foreach (var entry in m_dataPerPlatformList)
@@ -124,7 +131,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public void SetStreamingMedia(string wwisePlatform, string language, string platformDir, List<AkAssetUtilities.SoundBankStreamedFile> streamingMedia)
+		public void SetStreamingMedia(string wwisePlatform, string language, string platformDir, List<string> streamingMediaIds)
 		{
 			foreach (var entry in m_dataPerPlatformList)
 			{
@@ -133,10 +140,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					entry.LocalizedStreamingMedia[language] = new StreamingMediaList();
 
-					foreach (var newMedia in streamingMedia)
+					foreach (var Id in streamingMediaIds)
 					{
-						var mediaPath = System.IO.Path.Combine(platformDir, newMedia.id + ".wem");
-						entry.LocalizedStreamingMedia[language].Add(new AssetReferenceStreamingMedia(AssetDatabase.AssetPathToGUID(mediaPath), newMedia.id));
+						var mediaPath = System.IO.Path.Combine(platformDir, Id + ".wem");
+						entry.LocalizedStreamingMedia[language].Add(new AssetReferenceStreamingMedia(AssetDatabase.AssetPathToGUID(mediaPath), Id));
 					}
 					break;
 				}
@@ -230,23 +237,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 			return false;
-		}
-
-		public static AssetReferenceWwiseAddressableBank GetAddressableBankAssetReference(string name)
-		{
-			var assetPath = System.IO.Path.Combine(AkAssetUtilities.GetSoundbanksPath(), name + ".asset");
-			return new AssetReferenceWwiseAddressableBank(AssetDatabase.AssetPathToGUID(assetPath));
-		}
-
-		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name)
-		{
-			var assetPath = System.IO.Path.Combine(AkAssetUtilities.GetSoundbanksPath(), name + ".asset");
-			var asset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(assetPath);
-			if (asset == null)
-			{
-				Debug.LogError($"Could not find addressable bank asset : {assetPath}");
-			}
-			return asset;
 		}
 #endif
 	}
