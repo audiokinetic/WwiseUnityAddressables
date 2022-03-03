@@ -45,6 +45,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 	public class WwiseBankPostProcess : AssetPostprocessor
 	{
+		public delegate bool GetAssetMetadata(string name, string platform, string language, ref AddressableMetadata addressableMetadata);
+		
+		//Bind to this delegate to customize grouping or labeling of Wwise bank and media assets
+		public static GetAssetMetadata GetAssetMetadataDelegate;
 
 		static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
 		{
@@ -400,7 +404,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				Debug.LogWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
 				return;
 			}
-
 			List<AddressableAssetEntry> groupEntriesModified = new List<AddressableAssetEntry>();
 			var parseGroupNames = string.IsNullOrEmpty(groupName);
 			foreach (var assetPath in assetsAdded)
@@ -410,27 +413,44 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				string platform;
 				string language;
 				AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+				AddressableMetadata assetMetadata = ScriptableObject.CreateInstance<AddressableMetadata>();
 
 				if (parseGroupNames)
 				{
 					if (string.IsNullOrEmpty(platform))
 					{
-						Debug.LogError($"Wwise Addressables import : could not parse platform for {assetPath}.");
+						Debug.LogError($"Wwise Addressables import : could not parse platform for {assetPath}. It will not be made addressable.");
 						continue;
 					}
-					groupName = $"WwiseData_{platform}";
-
-					if (Path.GetFileName(assetPath) == "Init.bnk")
+					if (GetAssetMetadataDelegate != null)
 					{
-						groupName = $"WwiseData_{platform}_InitBank";
+						if (!GetAssetMetadataDelegate.Invoke(Path.GetFileName(assetPath), platform, language, ref assetMetadata))
+						{
+							// If we can't find a metadata asset use the default group name
+							assetMetadata.groupName = GetDefaultAddressableGroup(Path.GetFileName(assetPath), platform);
+						}
+					}
+					else
+					{
+						assetMetadata.groupName = GetDefaultAddressableGroup(Path.GetFileName(assetPath), platform);
 					}
 				}
+				else
+				{
+					assetMetadata.groupName = groupName;
+				}
 
-				AddressableAssetGroup group = GetOrAddGroup(settings, groupName);
-
+				AddressableAssetGroup group = GetOrAddGroup(settings, assetMetadata.groupName);
 				var groupEntry = settings.CreateOrMoveEntry(guid, group);
 				if (groupEntry != null)
 				{
+					if (assetMetadata.labels.Count >0)
+					{
+						foreach (string label in assetMetadata.labels)
+						{
+							groupEntry.labels.Add(label);
+						}
+					}
 					groupEntriesModified.Add(groupEntry);
 				}
 			}
@@ -442,6 +462,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
+		static string  GetDefaultAddressableGroup(string assetName, string platform)
+		{
+			string groupName = $"WwiseData_{platform}";
+			if (assetName == "Init.bnk")
+			{
+				groupName = $"WwiseData_{platform}_InitBank";
+			}
+			return groupName;
+		}
 
 		internal static void RemoveAssetsFromAddressables(HashSet<string> assetsToRemove)
 		{
@@ -467,10 +496,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 				var parentGroup = assetEntry.parentGroup;
 				settings.RemoveAssetEntry(guid);
-				if (parentGroup.entries.Count ==0)
-				{
-					settings.RemoveGroup(parentGroup);
-				}
 			}
 		}
 	}
