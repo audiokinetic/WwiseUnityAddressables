@@ -69,7 +69,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static bool UpdateWwiseFileIfNecessary(string wwiseFolder, WwiseAsset asset)
 		{
-			var hashPath = Path.Combine(wwiseFolder, asset.GetFilename() + ".md5");
+			var filePath = Path.Combine(wwiseFolder, asset.GetRelativeFilePath());
+			var hashPath = filePath + ".md5";
 			if (File.Exists(hashPath))
 			{
 				var existingHash = File.ReadAllBytes(hashPath);
@@ -77,23 +78,27 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (!AreHashesEqual(existingHash, asset.hash))
 				{
 					// Different hash means file content has changed and needs to be updated
-					WriteFile(wwiseFolder, hashPath, asset);
+					WriteFile(filePath, hashPath, asset);
 					return true;
 				}
 			}
 			else
 			{
 				// No hash means we are downloading the file for the first time
-				WriteFile(wwiseFolder, hashPath, asset);
+				WriteFile(filePath, hashPath, asset);
 				return true;
 			}
 			return false;
 		}
 
-		private static void WriteFile(string wwiseFolder, string hashPath, WwiseAsset asset)
+		private static void WriteFile(string filePath, string hashPath, WwiseAsset asset)
 		{
-			var path = Path.Combine(wwiseFolder, asset.GetFilename());
-			File.WriteAllBytes(path, asset.RawData);
+			var destinationDir = Path.GetDirectoryName(filePath);
+			if (!Directory.Exists(destinationDir))
+			{
+				Directory.CreateDirectory(destinationDir);
+			}
+			File.WriteAllBytes(filePath, asset.RawData);
 			File.WriteAllBytes(hashPath, asset.hash);
 		}
 	}

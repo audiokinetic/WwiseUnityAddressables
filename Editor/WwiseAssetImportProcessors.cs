@@ -294,6 +294,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string platform;
 					string language;
 					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+
 					var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
 
 					var bankNames = soundbankInfos.eventToSoundBankMap[name];
@@ -311,7 +312,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 						if (!string.IsNullOrEmpty(platform))
 						{
-							List<string> MediaIds = soundbankInfos[bankName][language].streamedFiles.Select(streamedFile => streamedFile.id).ToList();
+							if (!soundbankInfos[bankName].TryGetValue(language, out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
+							{
+								if (int.TryParse(language, out int result))
+									UnityEngine.Debug.LogError("Wwise Unity Addressables: Sub-folders for generated files currently not supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
+								else
+									UnityEngine.Debug.LogError($"Wwise Unity Addressables: Unable to process asset at path {assetPath}: Unrecognized language {language}");
+								continue;
+							}
+							List<string> MediaIds = sbInfo.streamedFileIds;
 							bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[bankName].Keys.ToList());
 							bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
 							EditorUtility.SetDirty(bankAsset);

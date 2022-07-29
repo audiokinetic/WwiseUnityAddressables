@@ -53,6 +53,28 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			private set { Instance = value; }
 		}
 
+		private uint? m_wwiseMajorVersion = null;
+		public uint WwiseMajorVersion
+		{
+			get
+			{
+				if (m_wwiseMajorVersion == null)
+				{
+					m_wwiseMajorVersion = AkSoundEngine.GetMajorMinorVersion() >> 16;
+				}
+				return (uint)m_wwiseMajorVersion;
+			}
+		}
+
+		public string WriteableMediaDirectory
+		{
+			get
+			{
+				string pdp = UnityEngine.Application.persistentDataPath;
+				return WwiseMajorVersion >= 2022 ? Path.Combine(pdp, "Media") : pdp;
+			}
+		}
+
 		private static WwiseAddressableSoundBank FindInitBank()
 		{
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
@@ -236,6 +258,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				bank.eventNames = new HashSet<string>(AsyncHandle.Result.eventNames);
 				var data = AsyncHandle.Result.RawData;
 				bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
+
 				var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID);
 				if (result == AKRESULT.AK_Success)
 				{
@@ -246,30 +269,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					bank.soundbankId = INVALID_SOUND_BANK_ID;
 					bank.loadState = BankLoadState.LoadFailed;
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Sound Engine failed to load {bank.name} SoundBank");
+					if ((int)result == 100) // 100 == AK_InvalidBankType (using the raw int value until this package only supports Wwise 22.1 and up)
+					{
+						UnityEngine.Debug.LogWarning($"Wwise Addressable Bank Manager : Bank {bank.name} is an auto-generated bank. The Unity Wwise Addressables package only supports user-defined banks. Avoid using auto-generated banks.");
+					}
+					else
+					{
+						UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Sound Engine failed to load {bank.name} SoundBank");
+					}
 				}
 				bank.GCHandle.Free();
-				Addressables.Release(AsyncHandle);
 
-				string destinationDir;
 				if (bank.StreamingMedia != null)
 				{
+					List<object> assetKeys = new List<object>();
 					foreach (var language in bank.StreamingMedia.Keys)
 					{
-						if (language == "SFX")
-						{
-							destinationDir = UnityEngine.Application.persistentDataPath; ;
-						}
-						else
-						{
-							destinationDir = Path.Combine(UnityEngine.Application.persistentDataPath, language);
-						}
-
-						if (!Directory.Exists(destinationDir))
-						{
-							Directory.CreateDirectory(destinationDir);
-						}
-
 						foreach (var streamedAsset in bank.StreamingMedia[language].media)
 						{
 							if (streamedAsset == null)
@@ -277,28 +292,29 @@ namespace AK.Wwise.Unity.WwiseAddressables
 								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} SoundBank is null");
 								continue;
 							}
-							var loadHandle = streamedAsset.LoadAssetAsync();
-							await loadHandle.Task;
-
-							if (loadHandle.IsValid() && loadHandle.Status == AsyncOperationStatus.Succeeded)
-							{
-								AkAssetUtilities.UpdateWwiseFileIfNecessary(destinationDir, loadHandle.Result);
-								Addressables.Release(loadHandle);
-							}
-							else
-							{
-								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Failed to load streaming media asset {streamedAsset.id} in {bank.name} SoundBank");
-							}
+							assetKeys.Add(streamedAsset);
 						}
 					}
+					if (assetKeys.Count > 0)
+					{
+						var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
+						{
+							AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
+						}, Addressables.MergeMode.Union, false);
+						await streamingAssetAsyncHandle.Task;
+						Addressables.Release(streamingAssetAsyncHandle);
+					}
 				}
+
 			}
 			else
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
 				bank.loadState = BankLoadState.LoadFailed;
-				Addressables.Release(AsyncHandle);
 			}
+
+			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
+			Addressables.Release(AsyncHandle);
 
 			//Make sure the asset is cleared from memory
 			UnityEngine.Resources.UnloadUnusedAssets();

@@ -1,13 +1,14 @@
-﻿using UnityEngine;
+﻿using System.IO;
+using UnityEngine;
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
 	[PreferBinarySerialization]
 	public class WwiseStreamingMediaAsset : WwiseAsset
 	{
-		public override string GetFilename()
+		public override string GetRelativeFilePath()
 		{
-			return name+ ".wem";
+			return language == "SFX" ? name + ".wem" : Path.Combine(language, name + ".wem");
 		}
 
 		public string GetName()

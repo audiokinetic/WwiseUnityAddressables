@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEditor;
+using System.Xml;
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
@@ -21,7 +22,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public class SoundBankInfo
 		{
-			public List<SoundBankStreamedFile> streamedFiles = new List<SoundBankStreamedFile>();
+			public List<string> streamedFileIds = new List<string>();
 			public List<string> events = new List<string>();
 		}
 
@@ -34,12 +35,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			public long lastParseTime;
 			public Dictionary<string, List<string>> eventToSoundBankMap = new Dictionary<string, List<string>>();
 
-		}
-
-		public struct SoundBankStreamedFile
-		{
-			public string id;
-			public string path;
 		}
 
 		public static string GetWwisePlatformNameFromBuildTarget(BuildTarget platform)
@@ -60,7 +55,27 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (parts.Length > 2)
 			{
-				language = parts[1];
+				// Asset is stored in a sub-folder; we must identify the purpose of the sub-folder.
+				if (parts[1] == "Media")
+				{
+					// Starting with Wwise 2022.1, loose media files are stored in a sub-directory named "Media".
+					// These themselves can be in localized sub-folders.
+					if (parts.Length > 3)
+					{
+						// The sub-sub folder name is the locale string
+						language = parts[2];
+					}
+				}
+				else if (parts[1] == "Bus" || parts[1] == "Media")
+				{
+					// Starting with 2022.1, there are auto-generated banks placed in these special sub-directories.
+					UnityEngine.Debug.LogError("Wwise Unity Addressables: Auto Defined SoundBanks are not yet supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
+				}
+				else
+				{
+					// Localized bank file; the sub-folder name is the locale string
+					language = parts[1];
+				}
 			}
 		}
 
@@ -88,7 +103,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			soundBankDict[bankName][bankLanguage] = new SoundBankInfo();
 		}
-
 
 		//Parse soundbank xml file to get a dict of the streaming wem files
 		public static PlatformEntry ParsePlatformSoundbanksXML(string platformName, string newBankName)
@@ -130,72 +144,135 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (doParse)
 			{
-				var soundBanks = new PlatformEntry();
-				soundBanks.lastParseTime = DateTime.Now.Ticks;
 				var doc = new System.Xml.XmlDocument();
 				doc.Load(xmlFilename);
 
-				var soundBanksRootNode = doc.GetElementsByTagName("SoundBanks");
-				for (var i = 0; i < soundBanksRootNode.Count; i++)
+				XmlElement root = doc.DocumentElement;
+				if (!Int32.TryParse(root.GetAttribute("SchemaVersion"), out int schemaVersion))
 				{
-					var soundBankNodes = soundBanksRootNode[i].SelectNodes("SoundBank");
-					for (var j = 0; j < soundBankNodes.Count; j++)
+					Debug.LogError($"Could not parse SoundBanksInfo.xml for {platformName}. Check {xmlFilename} for possible corruption.");
+					return null;
+				}
+
+				PlatformEntry soundBanks;
+				if (schemaVersion >= 16)
+				{
+					soundBanks = ParseSoundBanksInfoXmlv16(doc);
+				}
+				else
+				{
+					soundBanks = ParseSoundBanksInfoXmlv15(doc);
+				}
+				soundBanks.lastParseTime = DateTime.Now.Ticks;
+				soundbanksInfo[platformName] = soundBanks;
+			}
+			return soundbanksInfo[platformName];
+		}
+
+		private static PlatformEntry ParseSoundBanksInfoXmlv16(XmlDocument doc)
+		{
+			var soundBanks = new PlatformEntry();
+			var soundBanksRootNode = doc.GetElementsByTagName("SoundBanks");
+			for (var i = 0; i < soundBanksRootNode.Count; i++)
+			{
+				var soundBankNodes = soundBanksRootNode[i].SelectNodes("SoundBank");
+				for (var j = 0; j < soundBankNodes.Count; j++)
+				{
+					var bankName = soundBankNodes[j].SelectSingleNode("ShortName").InnerText;
+					var language = soundBankNodes[j].Attributes.GetNamedItem("Language").Value;
+
+					AddSoundBank(bankName, language, ref soundBanks);
+
+					if (bankName.Equals("Init"))
 					{
-						var bankName = soundBankNodes[j].SelectSingleNode("ShortName").InnerText;
-						var language = soundBankNodes[j].Attributes.GetNamedItem("Language").Value;
+						continue;
+					}
 
-						AddSoundBank(bankName, language, ref soundBanks);
-
-						if (bankName.Equals("Init"))
+					// First, record all streamed media contained in this bank.
+					var mediaRootNode = soundBankNodes[j].SelectSingleNode("Media");
+					if (mediaRootNode != null)
+					{
+						var fileNodes = mediaRootNode.SelectNodes("File");
+						foreach (XmlNode fileNode in fileNodes)
 						{
-							continue;
-						}
-
-						var includedEventsNode = soundBankNodes[j].SelectSingleNode("IncludedEvents");
-						if (includedEventsNode != null)
-						{
-							var eventNodes = includedEventsNode.SelectNodes("Event");
-							for (var e = 0; e < eventNodes.Count; e++)
+							if (fileNode.Attributes["Streaming"].Value == "true")
 							{
-								soundBanks[bankName][language].events.Add(eventNodes[e].Attributes["Name"].Value);
+								RecordStreamedFile(
+									soundBanks,
+									bankName,
+									fileNode.Attributes["Id"].Value,
+									fileNode.Attributes["Language"].Value);
+							}
+						}
+					}
 
-								var streamedFilesRootNode = eventNodes[e].SelectSingleNode("ReferencedStreamedFiles");
-								if (streamedFilesRootNode != null)
+					// Then, record all events contained in the bank
+					var includedEventsNode = soundBankNodes[j].SelectSingleNode("Events");
+					if (includedEventsNode != null)
+					{
+						var eventNodes = includedEventsNode.SelectNodes("Event");
+						foreach (XmlNode eventNode in eventNodes)
+						{
+							RecordEvent(soundBanks, bankName, language, eventNode.Attributes["Name"].Value);
+						}
+					}
+				}
+			}
+
+			return soundBanks;
+		}
+
+		private static PlatformEntry ParseSoundBanksInfoXmlv15(XmlDocument doc)
+		{
+			var soundBanks = new PlatformEntry();
+			var soundBanksRootNode = doc.GetElementsByTagName("SoundBanks");
+			for (var i = 0; i < soundBanksRootNode.Count; i++)
+			{
+				var soundBankNodes = soundBanksRootNode[i].SelectNodes("SoundBank");
+				for (var j = 0; j < soundBankNodes.Count; j++)
+				{
+					var bankName = soundBankNodes[j].SelectSingleNode("ShortName").InnerText;
+					var language = soundBankNodes[j].Attributes.GetNamedItem("Language").Value;
+
+					AddSoundBank(bankName, language, ref soundBanks);
+
+					if (bankName.Equals("Init"))
+					{
+						continue;
+					}
+
+					var includedEventsNode = soundBankNodes[j].SelectSingleNode("IncludedEvents");
+					if (includedEventsNode != null)
+					{
+						var eventNodes = includedEventsNode.SelectNodes("Event");
+						for (var e = 0; e < eventNodes.Count; e++)
+						{
+							RecordEvent(soundBanks, bankName, language, eventNodes[e].Attributes["Name"].Value);
+
+							var streamedFilesRootNode = eventNodes[e].SelectSingleNode("ReferencedStreamedFiles");
+							if (streamedFilesRootNode != null)
+							{
+								var streamedFileNodes = streamedFilesRootNode.SelectNodes("File");
+								if (streamedFileNodes.Count > 0)
 								{
-									var streamedFileNodes = streamedFilesRootNode.SelectNodes("File");
-									if (streamedFileNodes.Count > 0)
+									for (var s = 0; s < streamedFileNodes.Count; s++)
 									{
-										for (var s = 0; s < streamedFileNodes.Count; s++)
-										{
-											var streamedFilelanguage = streamedFileNodes[s].Attributes.GetNamedItem("Language").Value;
-
-											if (!soundBanks[bankName].ContainsKey(streamedFilelanguage))
-											{
-												AddSoundBank(bankName, streamedFilelanguage, ref soundBanks);
-											}
-											var streamedFile = new SoundBankStreamedFile
-											{
-												id = streamedFileNodes[s].Attributes["Id"].Value,
-												path = Path.GetFileName(streamedFileNodes[s].SelectSingleNode("Path").InnerText)
-											};
-
-											soundBanks[bankName][streamedFilelanguage].streamedFiles.Add(streamedFile);
-											if (!soundBanks.eventToSoundBankMap.ContainsKey(streamedFile.id))
-											{
-												soundBanks.eventToSoundBankMap[streamedFile.id] = new List<string>();
-											}
-											soundBanks.eventToSoundBankMap[streamedFile.id].Add(bankName);
-										}
+										RecordStreamedFile(
+											soundBanks,
+											bankName,
+											streamedFileNodes[s].Attributes["Id"].Value,
+											streamedFileNodes[s].Attributes.GetNamedItem("Language").Value);
 									}
 								}
 							}
 						}
 					}
 				}
-				soundbanksInfo[platformName] = soundBanks;
 			}
-			return soundbanksInfo[platformName];
+
+			return soundBanks;
 		}
+
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)
 		{
 			System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
@@ -205,6 +282,28 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			bool success = (bool)AkBankReferenceType.GetMethod("FindBankReferenceAndSetAddressableBank").Invoke(null, new object[] { addressableBankAsset, name });
 		}
 
+		private static void RecordEvent(PlatformEntry soundBanks, string bankName, string language, string eventName)
+		{
+			soundBanks[bankName][language].events.Add(eventName);
+		}
+
+		private static void RecordStreamedFile(PlatformEntry soundBanks, string bankName, string id, string language)
+		{
+			if (!soundBanks[bankName].ContainsKey(language))
+			{
+				AddSoundBank(bankName, language, ref soundBanks);
+			}
+
+			// Record that this bank "contains" this streamed media file
+			soundBanks[bankName][language].streamedFileIds.Add(id);
+
+			// Record that this streamed media file is "contained" in this bank
+			if (!soundBanks.eventToSoundBankMap.ContainsKey(id))
+			{
+				soundBanks.eventToSoundBankMap[id] = new List<string>();
+			}
+			soundBanks.eventToSoundBankMap[id].Add(bankName);
+		}
 	}
 }
 #endif

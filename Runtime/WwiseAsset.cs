@@ -13,7 +13,11 @@ public abstract class WwiseAsset : ScriptableObject
 	[HideInInspector]
 	public byte[] hash;
 
-	abstract public string GetFilename();
+	[SerializeField]
+	[HideInInspector]
+	public string language;
+
+	abstract public string GetRelativeFilePath();
 
 	public int AssetSize
 	{

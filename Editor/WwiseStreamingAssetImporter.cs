@@ -35,6 +35,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
 			byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
 			dataAsset.hash = hash;
+			dataAsset.language = language;
 
 			ctx.AddObjectToAsset(string.Format("WwiseSteamingMedia_{0}{1}_{2}", platform, language, assetName), dataAsset);
 			ctx.SetMainObject(dataAsset);

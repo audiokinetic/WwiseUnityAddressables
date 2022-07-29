@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace AK.Wwise.Unity.WwiseAddressables
@@ -9,9 +10,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		[SerializeField]
 		public List<string> eventNames;
 		
-		public override string GetFilename()
+		public override string GetRelativeFilePath()
 		{
-			return name + ".bnk";
+			return language == "SFX" ? name + ".bnk" : Path.Combine(language, name + ".bnk");
 		}
 
 		public string GetName()
