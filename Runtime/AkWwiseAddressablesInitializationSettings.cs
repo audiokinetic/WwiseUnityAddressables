@@ -12,12 +12,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_Instance == null)
 				{
+#if WWISE_ADDRESSABLES_POST_2023
+					AkAddressablesSoundEngineInitialization.ResetInstance();
+#endif
 #if UNITY_EDITOR
 					var name = typeof(AkWwiseInitializationSettings).Name;
 					var className = typeof(AkWwiseAddressablesInitializationSettings).Name;
 					m_Instance = ReplaceOrCreateAsset(className, name);
 #else
-					m_Instance =(AkWwiseAddressablesInitializationSettings) CreateInstance<AkWwiseAddressablesInitializationSettings>();
+					m_Instance = (AkWwiseAddressablesInitializationSettings) CreateInstance<AkWwiseAddressablesInitializationSettings>();
 					UnityEngine.Debug.LogWarning("WwiseUnity: No platform specific settings were created. Default initialization settings will be used.");
 #endif
 				}
@@ -26,6 +29,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
+#if !WWISE_ADDRESSABLES_POST_2023
 		protected override void LoadInitBank()
 		{
 			AkAddressableBankManager.Instance.LoadInitBank();
@@ -36,6 +40,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			AkAddressableBankManager.Instance.UnloadAllBanks(clearBankDictionary: false);
 			AkAddressableBankManager.Instance.UnloadInitBank();
 		}
+#endif
+
 
 #if UNITY_EDITOR
 		public static AkWwiseAddressablesInitializationSettings ReplaceOrCreateAsset(string className, string fileName)
@@ -49,7 +55,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					return loadedAsset;
 				}
-				else //overwrite current InitializationSettings asset with new one adressables one
+				else //overwrite current InitializationSettings asset with the addressables one
 				{
 					UnityEditor.AssetDatabase.DeleteAsset(path);
 					var newAsset = CreateInstance<AkWwiseAddressablesInitializationSettings>();

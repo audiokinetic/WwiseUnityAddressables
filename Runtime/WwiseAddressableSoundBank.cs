@@ -149,6 +149,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void SetStreamingMedia(string wwisePlatform, string language, string platformDir, List<string> streamingMediaIds)
 		{
+			List<string> uniqueList = streamingMediaIds.Distinct().ToList();
 			foreach (var entry in m_dataPerPlatformList)
 			{
 				if (entry.WwisePlatform == wwisePlatform)
@@ -156,7 +157,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					entry.LocalizedStreamingMedia[language] = new StreamingMediaList();
 
-					foreach (var Id in streamingMediaIds)
+					foreach (var Id in uniqueList)
 					{
 						var mediaPath = System.IO.Path.Combine(platformDir, Id + ".wem");
 						entry.LocalizedStreamingMedia[language].Add(new AssetReferenceStreamingMedia(AssetDatabase.AssetPathToGUID(mediaPath), Id));

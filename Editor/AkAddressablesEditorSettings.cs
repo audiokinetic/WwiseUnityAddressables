@@ -1,6 +1,8 @@
 ﻿#if UNITY_EDITOR
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
 using UnityEngine;
+using System.Xml;
+
 namespace AK.Wwise.Unity.WwiseAddressables
 {
 	[System.Serializable]
@@ -36,6 +38,26 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					var projectDir = System.IO.Path.GetDirectoryName(UnityEngine.Application.dataPath);
 					var foundWwiseProjects = System.IO.Directory.GetFiles(projectDir, "*.wproj", System.IO.SearchOption.AllDirectories);
+
+					//WG-61124 In order to avoid addressables not being updated when removing the streaming option, enable the RemoveUnusedGeneratedFiles feature
+					foreach (var projects in foundWwiseProjects)
+					{
+						var doc = new System.Xml.XmlDocument();
+						doc.Load(projects);
+						var RemoveUnusedGeneratedFilesNode = doc.SelectSingleNode("//Property[@Name='RemoveUnusedGeneratedFiles']");
+						if (RemoveUnusedGeneratedFilesNode != null)
+                        {
+							XmlAttribute valueAttribute = RemoveUnusedGeneratedFilesNode.Attributes["Value"];
+							if (valueAttribute != null && valueAttribute.Value != null && valueAttribute.Value != "True")
+							{
+								valueAttribute.Value = "True";
+								doc.Save(projects);
+							}
+						}
+
+					}
+
+
 
 					settings.MetadataPath = "WwiseAddressablesMetadata";
 					settings.UseSampleMetadataPreserver = false;

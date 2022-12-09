@@ -11,6 +11,10 @@ using System.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace AK.Wwise.Unity.WwiseAddressables
 {
 	public class AkAddressableBankManager
@@ -132,7 +136,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var m_banksToReload = new ConcurrentDictionary<string, WwiseAddressableSoundBank>(m_AddressableBanks);
 			UnloadAllBanks();
 			UnloadInitBank();
+#if WWISE_ADDRESSABLES_POST_2023
+			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+#else
 			LoadInitBank();
+#endif
+
 
 			foreach (var bank in m_banksToReload.Values)
 			{
@@ -160,7 +169,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			UnloadInitBank();
 			AkSoundEngine.SetCurrentLanguage(language);
 			AkSoundEngine.RenderAudio();
+#if WWISE_ADDRESSABLES_POST_2023
+			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+#else
 			LoadInitBank();
+#endif
 
 			foreach (var bank in banksToReload)
 			{
@@ -168,11 +181,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public void LoadInitBank()
+		public void LoadInitBank(bool loadAsync = true)
 		{
 			if (InitBank != null)
 			{
-				LoadBank(InitBank, addToBankDictionary: false);
+				LoadBank(InitBank, addToBankDictionary: false, loadAsync: loadAsync);
 			}
 		}
 
@@ -185,7 +198,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 
 		//Todo : support decoding banks and saving decoded banks
-		public void LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true)
+		public void LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
 		{
 			bank.decodeBank = decodeBank;
 			bank.saveDecodedBank = saveDecodedBank;
@@ -253,19 +266,30 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-			LoadBankAsync(bank, bankData);
+			LoadBankAsync(bank, bankData, loadAsync);
 		}
 
-		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
+		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
 		{
-
-			var AsyncHandle = bankData.LoadAssetAsync();
-			await AsyncHandle.Task;
-
-			if (AsyncHandle.IsValid() && AsyncHandle.Status == AsyncOperationStatus.Succeeded)
+			var asyncHandle = bankData.LoadAssetAsync<WwiseSoundBankAsset>();
+			WwiseSoundBankAsset soundBankAsset;
+			if(loadAsync)
 			{
-				bank.eventNames = new HashSet<string>(AsyncHandle.Result.eventNames);
-				var data = AsyncHandle.Result.RawData;
+				soundBankAsset = await asyncHandle.Task;
+			}
+			else
+			{
+				soundBankAsset = asyncHandle.WaitForCompletion();
+			}
+			//AsyncHandle gets corrupted in Unity 2021 but properly returns the loaded Asset as expected
+#if UNITY_2021_1_OR_NEWER
+			if (soundBankAsset)
+#else
+			if (asyncHandle.IsValid() && asyncHandle.Status == AsyncOperationStatus.Succeeded)
+#endif
+			{
+				bank.eventNames = new HashSet<string>(soundBankAsset.eventNames);
+				var data = soundBankAsset.RawData;
 				bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
 
 				var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID);
@@ -306,14 +330,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					}
 					if (assetKeys.Count > 0)
 					{
-						var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
+#if UNITY_EDITOR
+						if ((EditorSettings.enterPlayModeOptions & EnterPlayModeOptions.DisableDomainReload) != 0 || EditorApplication.isPlaying)
+#endif
 						{
-							AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
-						}, Addressables.MergeMode.Union, false);
+							var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
+							{
+								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
+							}, Addressables.MergeMode.Union, false);
 
-						streamingAssetAsyncHandle.WaitForCompletion();
+							streamingAssetAsyncHandle.WaitForCompletion();
 
-						Addressables.Release(streamingAssetAsyncHandle);
+							Addressables.Release(streamingAssetAsyncHandle);
+						}
 					}
 				}
 			}
@@ -324,8 +353,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
-			Addressables.Release(AsyncHandle);
 			OnBankLoaded(bank);
+			Addressables.Release(asyncHandle);
+
 		}
 		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = true)
 		{
@@ -342,6 +372,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} will be unloaded after it is done loading");
 				m_banksToUnload.TryAdd(bank.name, bank.name);
+				return;
+			}
+
+			if(bank.loadState == BankLoadState.Unloaded)
+			{
+				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
 				return;
 			}
 

@@ -1,3 +1,5 @@
+#if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
+
 using System.Collections;
 using System.Collections.Generic;
 using AK.Wwise.Unity.WwiseAddressables;
@@ -71,3 +73,4 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #endif
     }
 }
+#endif
