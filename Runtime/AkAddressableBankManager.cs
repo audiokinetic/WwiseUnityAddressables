@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-
+using System.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
@@ -89,13 +89,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnityEngine.Debug.LogError("Wwise Addressables : There is more than one InitBankHolder in the scene, which is not recommended.");
 			}
 
-			if (foundBank[0].InitBank == null)
+			WwiseAddressableSoundBank InitBank = foundBank[0].GetAddressableInitBank();
+			if (InitBank == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables : The InitBankHolder does not hold a valid reference to the Init bank.");
+				UnityEngine.Debug.LogError("Wwise Addressables : The InitBankHolder could not get a valid reference to the Init bank.");
 				return null;
 
 			}
-			return foundBank[0].InitBank;
+
+			return InitBank;
 		}
 
 		struct EventContainer
@@ -168,12 +170,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void LoadInitBank()
 		{
-			LoadBank(InitBank, addToBankDictionary: false);
+			if (InitBank != null)
+			{
+				LoadBank(InitBank, addToBankDictionary: false);
+			}
 		}
 
 		public void UnloadInitBank()
 		{
-			UnloadBank(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
+			if (InitBank != null)
+			{
+				UnloadBank(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
+			}
 		}
 
 		//Todo : support decoding banks and saving decoded banks
@@ -248,8 +256,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			LoadBankAsync(bank, bankData);
 		}
 
-		public async void LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
+		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
 		{
+
 			var AsyncHandle = bankData.LoadAssetAsync();
 			await AsyncHandle.Task;
 
@@ -282,7 +291,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				if (bank.StreamingMedia != null)
 				{
-					List<object> assetKeys = new List<object>();
+					var assetKeys = new List<AssetReferenceStreamingMedia>();
 					foreach (var language in bank.StreamingMedia.Keys)
 					{
 						foreach (var streamedAsset in bank.StreamingMedia[language].media)
@@ -301,26 +310,23 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
 						}, Addressables.MergeMode.Union, false);
-						await streamingAssetAsyncHandle.Task;
+
+						streamingAssetAsyncHandle.WaitForCompletion();
+
 						Addressables.Release(streamingAssetAsyncHandle);
 					}
 				}
-
 			}
 			else
 			{
-				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
+				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
 				bank.loadState = BankLoadState.LoadFailed;
 			}
 
 			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
 			Addressables.Release(AsyncHandle);
-
-			//Make sure the asset is cleared from memory
-			UnityEngine.Resources.UnloadUnusedAssets();
 			OnBankLoaded(bank);
 		}
-		
 		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = true)
 		{
 			if (!ignoreRefCount)

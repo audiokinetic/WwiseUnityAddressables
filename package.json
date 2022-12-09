@@ -1,12 +1,12 @@
 {
   "name": "com.audiokinetic.wwise.addressables",
-  "version": "2022.0.0",
+  "version": "2022.1.0",
   "displayName": "Wwise Unity Addressables",
   "description": "Wwise Unity Addressables",
   "unity": "2018.4",
   "unityRelease": "4f1",
   "dependencies": {
-    "com.unity.addressables": "1.16.10"
+    "com.unity.addressables": "1.18.19"
   },
   "keywords": [
     "Wwise",

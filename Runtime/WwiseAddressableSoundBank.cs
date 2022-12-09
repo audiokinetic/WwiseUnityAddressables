@@ -14,18 +14,34 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	public class WwiseAddressableSoundBank : ScriptableObject, ISerializationCallbackReceiver
 	{
 		[SerializeField]
-		public WwiseBankPerPlatformEntry[] m_dataPerPlatformList;
-		[SerializeField]
-		public WwiseBankPerPlatformEntry CurrentPlatformAssets;
+		internal WwiseBankPerPlatformEntry[] m_dataPerPlatformList;
 
-		public BankLoadState loadState = BankLoadState.Unloaded;
-		public string currentLanguage;
-		public uint soundbankId = AkAddressableBankManager.INVALID_SOUND_BANK_ID;
-		public GCHandle GCHandle;
-		public bool decodeBank;
-		public bool saveDecodedBank;
-		public HashSet<string> eventNames;
-		public int refCount;
+		[SerializeField]
+		internal WwiseBankPerPlatformEntry currentPlatformAssets;
+
+		[System.NonSerialized]
+		internal BankLoadState loadState = BankLoadState.Unloaded;
+
+		[System.NonSerialized]
+		internal string currentLanguage;
+
+		[System.NonSerialized]
+		internal uint soundbankId = AkAddressableBankManager.INVALID_SOUND_BANK_ID;
+
+		[System.NonSerialized]
+		internal GCHandle GCHandle;
+
+		[System.NonSerialized]
+		internal bool decodeBank;
+
+		[System.NonSerialized]
+		internal bool saveDecodedBank;
+
+		[System.NonSerialized]
+		internal HashSet<string> eventNames;
+
+		[System.NonSerialized]
+		internal int refCount;
 
 #if UNITY_EDITOR
 		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
@@ -40,7 +56,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				string wwisePlatform = AkBasePathGetter.GetPlatformName();
 				return m_dataPerPlatformList.Where(x => x.WwisePlatform == wwisePlatform).Select(x => x.LocalizedBanks).FirstOrDefault();
 #else
-				return CurrentPlatformAssets.LocalizedBanks;
+				return currentPlatformAssets.LocalizedBanks;
 #endif
 			}
 		}
@@ -53,7 +69,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				string wwisePlatform = AkBasePathGetter.GetPlatformName();
 				return m_dataPerPlatformList.Where(x => x.WwisePlatform == wwisePlatform).Select(x => x.LocalizedStreamingMedia).FirstOrDefault();
 #else
-				return CurrentPlatformAssets.LocalizedStreamingMedia;
+				return currentPlatformAssets.LocalizedStreamingMedia;
 #endif
 			}
 		}
@@ -69,7 +85,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 #else
-			CurrentPlatformAssets.Deserialize();
+			currentPlatformAssets.Deserialize();
 #endif
 		}
 
@@ -90,7 +106,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					if (entry.WwisePlatform == wwisePlatform)
 					{
-						CurrentPlatformAssets = entry;
+						currentPlatformAssets = entry;
 					}
 				}
 			}

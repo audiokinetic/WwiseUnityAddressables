@@ -1,5 +1,6 @@
 {
     "name": "AK.Wwise.Unity.Addressables.Editor",
+    "rootNamespace": "",
     "references": [
         "AK.Wwise.Unity.MonoBehaviour.Editor",
         "Unity.Addressables.Editor",
@@ -8,7 +9,8 @@
         "Unity.ResourceManager",
         "Unity.ScriptableBuildPipeline",
         "AK.Wwise.Unity.API",
-        "AK.Wwise.Unity.Addressables"
+        "AK.Wwise.Unity.Addressables",
+        "AK.Wwise.Unity.API.WwiseTypes"
     ],
     "includePlatforms": [
         "Editor"
@@ -18,7 +20,7 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [ "!UNITY_SERVER" ],
     "versionDefines": [
         {
             "name": "com.unity.addressables",

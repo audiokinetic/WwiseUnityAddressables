@@ -26,10 +26,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (platform == null)
 			{
+				Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
 				return;
 			}
 
 			var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, assetName);
+
+			if (soundbankInfos == null)
+			{
+				Debug.LogWarning($"Skipping {ctx.assetPath}. SoundbanksInfo.xml could not be parsed.");
+				return;
+			}
 
 			if (!soundbankInfos.ContainsKey(assetName))
 			{

@@ -47,10 +47,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			platform = string.Empty;
 			language = "SFX";
 
-			var banksPath = $"{GetSoundbanksPath()}/";
-			var assetRelPath = assetPath.Replace(banksPath, "");
+			var banksPath = GetFullSoundbanksPath() + Path.DirectorySeparatorChar;
+			var assetsFullPath = Path.GetFullPath(assetPath);
 
-			string[] parts = assetRelPath.Split('/');
+			// TODO Use Path.RelativePath as soon as Unity uses a .NET version that includes it (i.e 2021.3)
+			var assetRelPath = assetsFullPath.Replace(banksPath, "");
+
+			string[] parts = assetRelPath.Split(Path.DirectorySeparatorChar);
 			platform = parts[0];
 
 			if (parts.Length > 2)
@@ -89,6 +92,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
 			return path.Replace("\\", "/");
 		}
+
+		private static string GetFullSoundbanksPath()
+		{
+			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
+			{
+				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
+				return string.Empty;
+			}
+			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
+			return Path.GetFullPath(path);
+		}
+
 
 		public static void ClearSoundbankInfo()
 		{
@@ -145,7 +160,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (doParse)
 			{
 				var doc = new System.Xml.XmlDocument();
-				doc.Load(xmlFilename);
+				PlatformEntry soundBanks;
+
+				try
+				{
+					doc.Load(xmlFilename);
+				}
+				catch (XmlException e)
+				{
+					UnityEngine.Debug.LogError("Exception occurred while parsing SoundBanksInfo.xml. Cannot update project SoundBanks info: " + e);
+					return null;
+				}
 
 				XmlElement root = doc.DocumentElement;
 				if (!Int32.TryParse(root.GetAttribute("SchemaVersion"), out int schemaVersion))
@@ -154,7 +179,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					return null;
 				}
 
-				PlatformEntry soundBanks;
 				if (schemaVersion >= 16)
 				{
 					soundBanks = ParseSoundBanksInfoXmlv16(doc);
@@ -166,6 +190,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				soundBanks.lastParseTime = DateTime.Now.Ticks;
 				soundbanksInfo[platformName] = soundBanks;
 			}
+
+			if (soundbanksInfo[platformName].eventToSoundBankMap.Count == 0)
+			{
+				Debug.LogWarning($"Could not retrieve event data for {platformName} from SoundBanksInfo.xml. Check {xmlFilename} for possible corruption.");
+			}
+
 			return soundbanksInfo[platformName];
 		}
 
@@ -275,11 +305,26 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)
 		{
-			System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+			WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name);
+		}
 
-			var assembly = Assembly.Load("AK.Wwise.Unity.API.WwiseTypes");
-			var AkBankReferenceType = assembly.GetType("WwiseBankReference");
-			bool success = (bool)AkBankReferenceType.GetMethod("FindBankReferenceAndSetAddressableBank").Invoke(null, new object[] { addressableBankAsset, name });
+		public static void EnsureInitBankAssetCreated()
+		{
+			var guids = UnityEditor.AssetDatabase.FindAssets("t:" + typeof(WwiseInitBankReference).Name, new string[] { AkWwiseEditorSettings.WwiseScriptableObjectRelativePath });
+			var InitBankAssetPath = Path.Combine(AkWwiseEditorSettings.WwiseScriptableObjectRelativePath, "InitBank.asset");
+			if (guids.Length == 0)
+			{
+				try
+				{
+					AssetDatabase.StartAssetEditing();
+					WwiseInitBankReference InitBankRef = UnityEngine.ScriptableObject.CreateInstance<WwiseInitBankReference>();
+					UnityEditor.AssetDatabase.CreateAsset(InitBankRef, InitBankAssetPath);
+				}
+				finally
+				{
+					AssetDatabase.StopAssetEditing();
+				}
+			}
 		}
 
 		private static void RecordEvent(PlatformEntry soundBanks, string bankName, string language, string eventName)
