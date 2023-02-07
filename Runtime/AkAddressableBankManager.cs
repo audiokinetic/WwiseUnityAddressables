@@ -168,11 +168,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public void LoadInitBank()
+		public void LoadInitBank(bool loadAsync = true)
 		{
 			if (InitBank != null)
 			{
-				LoadBank(InitBank, addToBankDictionary: false);
+				LoadBank(InitBank, addToBankDictionary: false, loadAsync: loadAsync);
 			}
 		}
 
@@ -185,7 +185,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 
 		//Todo : support decoding banks and saving decoded banks
-		public void LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true)
+		public void LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = false)
 		{
 			bank.decodeBank = decodeBank;
 			bank.saveDecodedBank = saveDecodedBank;
@@ -253,14 +253,20 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-			LoadBankAsync(bank, bankData);
+			LoadBankAsync(bank, bankData, loadAsync);
 		}
 
-		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
+		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
 		{
-
 			var AsyncHandle = bankData.LoadAssetAsync();
-			await AsyncHandle.Task;
+			if(loadAsync)
+			{
+				await AsyncHandle.Task;
+			}
+			else
+			{
+				AsyncHandle.WaitForCompletion();
+			}
 
 			if (AsyncHandle.IsValid() && AsyncHandle.Status == AsyncOperationStatus.Succeeded)
 			{
@@ -348,6 +354,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} will be unloaded after it is done loading");
 				m_banksToUnload.TryAdd(bank.name, bank.name);
+				return;
+			}
+
+			if(bank.loadState == BankLoadState.Unloaded)
+			{
+				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
 				return;
 			}
 

@@ -13,6 +13,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (m_Instance == null)
 				{
 #if UNITY_EDITOR
+					AkAddressablesSoundEngineInitialization.ResetInstance();
 					var name = typeof(AkWwiseInitializationSettings).Name;
 					var className = typeof(AkWwiseAddressablesInitializationSettings).Name;
 					m_Instance = ReplaceOrCreateAsset(className, name);
@@ -24,17 +25,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				return m_Instance;
 			}
-		}
-
-		protected override void LoadInitBank()
-		{
-			AkAddressableBankManager.Instance.LoadInitBank();
-		}
-
-		protected override void ClearBanks()
-		{
-			AkAddressableBankManager.Instance.UnloadAllBanks(clearBankDictionary: false);
-			AkAddressableBankManager.Instance.UnloadInitBank();
 		}
 
 #if UNITY_EDITOR
