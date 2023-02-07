@@ -274,6 +274,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					bank.soundbankId = bankID;
 					bank.loadState = BankLoadState.Loaded;
 				}
+				else if (result == AKRESULT.AK_BankAlreadyLoaded )
+				{
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: SoundBank {bank.name} already loaded.");
+					bank.soundbankId = bankID;
+					bank.loadState = BankLoadState.Loaded;
+				}
 				else
 				{
 					bank.soundbankId = INVALID_SOUND_BANK_ID;
@@ -350,6 +356,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
 				AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
 
+			}
+
+			if(bank.loadState == BankLoadState.Unloaded)
+			{
+				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
+				return;
 			}
 
 			m_banksToUnload.TryRemove(bank.name, out _);
