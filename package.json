@@ -6,7 +6,7 @@
   "unity": "2018.4",
   "unityRelease": "4f1",
   "dependencies": {
-    "com.unity.addressables": "1.18.19"
+    "com.unity.addressables": "1.21.20"
   },
   "keywords": [
     "Wwise",
