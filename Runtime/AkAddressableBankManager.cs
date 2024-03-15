@@ -273,7 +273,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			var asyncHandle = bankData.LoadAssetAsync<WwiseSoundBankAsset>();
 			WwiseSoundBankAsset soundBankAsset;
-			if(loadAsync)
+#if UNITY_WEBGL && !UNITY_EDITOR
+			// On WebGL, we MUST load asynchronously in order to yield back to the browser.
+			// Failing to do so will result in the thread blocking forever and the asset will never be loaded.
+			soundBankAsset = await asyncHandle.Task;
+#else
+			if (loadAsync)
 			{
 				soundBankAsset = await asyncHandle.Task;
 			}
@@ -281,6 +286,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				soundBankAsset = asyncHandle.WaitForCompletion();
 			}
+#endif
 			//AsyncHandle gets corrupted in Unity 2021 but properly returns the loaded Asset as expected
 #if UNITY_2021_1_OR_NEWER
 			if (soundBankAsset)
@@ -338,8 +344,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							{
 								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
 							}, Addressables.MergeMode.Union, false);
-
+#if UNITY_WEBGL && !UNITY_EDITOR
+							// On WebGL, we MUST load asynchronously in order to yield back to the browser.
+							// Failing to do so will result in the thread blocking forever and the asset will never be loaded.
+							await streamingAssetAsyncHandle.Task;
+#else
 							streamingAssetAsyncHandle.WaitForCompletion();
+#endif
 
 							Addressables.Release(streamingAssetAsyncHandle);
 						}
