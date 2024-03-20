@@ -37,7 +37,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			string platform;
 			string language;
-			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
+			string type;
+			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language, out type);
 
 			if (platform == null)
 			{
