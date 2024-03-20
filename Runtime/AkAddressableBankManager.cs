@@ -298,7 +298,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				var data = soundBankAsset.RawData;
 				bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
 
-				var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID);
+				var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID, out uint bankType);
 				if (result == AKRESULT.AK_Success)
 				{
 					bank.soundbankId = bankID;

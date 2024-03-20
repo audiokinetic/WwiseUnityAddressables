@@ -59,7 +59,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (parts.Length > 2)
 			{
 				// Asset is stored in a sub-folder; we must identify the purpose of the sub-folder.
-				if (parts[1] == "Media")
+				if (parts[1] == "Media" || parts[1] == "Bus" || parts[1] == "Event")
 				{
 					// Starting with Wwise 2022.1, loose media files are stored in a sub-directory named "Media".
 					// These themselves can be in localized sub-folders.
@@ -68,11 +68,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						// The sub-sub folder name is the locale string
 						language = parts[2];
 					}
-				}
-				else if (parts[1] == "Bus" || parts[1] == "Media")
-				{
-					// Starting with 2022.1, there are auto-generated banks placed in these special sub-directories.
-					UnityEngine.Debug.LogError("Wwise Unity Addressables: Auto Defined SoundBanks are not yet supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
 				}
 				else
 				{
@@ -232,14 +227,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						var fileNodes = mediaRootNode.SelectNodes("File");
 						foreach (XmlNode fileNode in fileNodes)
 						{
-							if (fileNode.Attributes["Streaming"].Value == "true")
-							{
-								RecordStreamedFile(
-									soundBanks,
-									bankName,
-									fileNode.Attributes["Id"].Value,
-									fileNode.Attributes["Language"].Value);
-							}
+							RecordMediaFile(
+								soundBanks,
+								bankName,
+								fileNode.Attributes["Id"].Value,
+								fileNode.Attributes["Language"].Value);
 						}
 					}
 
@@ -294,7 +286,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 								{
 									for (var s = 0; s < streamedFileNodes.Count; s++)
 									{
-										RecordStreamedFile(
+										RecordMediaFile(
 											soundBanks,
 											bankName,
 											streamedFileNodes[s].Attributes["Id"].Value,
@@ -312,7 +304,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)
 		{
-			WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name);
+			if (!WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name))
+			{
+				WwiseEventReference.FindEventReferenceAndSetAddressableBank(addressableBankAsset, name);
+			}
 		}
 
 		public static void EnsureInitBankAssetCreated()
@@ -339,7 +334,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			soundBanks[bankName][language].events.Add(eventName);
 		}
 
-		private static void RecordStreamedFile(PlatformEntry soundBanks, string bankName, string id, string language)
+		private static void RecordMediaFile(PlatformEntry soundBanks, string bankName, string id, string language)
 		{
 			if (!soundBanks[bankName].ContainsKey(language))
 			{

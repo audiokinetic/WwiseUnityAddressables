@@ -48,6 +48,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static GetWwisePlatformNameDelegate GetWwisePlatformNameFromBuildTarget;
 #endif
 
+		public uint SoundbankId
+		{
+			get { return soundbankId; }
+		}
+
 		public Dictionary<string, AssetReferenceWwiseBankData> Data
 		{
 			get
