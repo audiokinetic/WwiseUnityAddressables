@@ -46,6 +46,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
 			dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
 			dataAsset.language = language;
+			dataAsset.isAutoBank = AkAddressablesEditorUtilities.IsAutoBank(ctx.assetPath);
 			var eventNames = soundbankInfos[assetName][language].events;
 			if (language !="SFX" && soundbankInfos[assetName].ContainsKey("SFX"))
 			{

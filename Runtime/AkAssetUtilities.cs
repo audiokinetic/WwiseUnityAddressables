@@ -33,14 +33,23 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return new AssetReferenceWwiseAddressableBank(AssetDatabase.AssetPathToGUID(assetPath));
 		}
 
-		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name)
+		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name, bool IsLookingForAutoBank)
 		{
 			var assetPath = System.IO.Path.Combine(GetSoundbanksPath(), name + ".asset");
 			var asset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(assetPath);
 			if (asset == null)
 			{
-				Debug.LogError($"Could not find addressable bank asset : {assetPath}");
+				if (IsLookingForAutoBank)
+				{
+					Debug.LogWarning($"Could not find addressable bank asset : {assetPath}. If the event is in an User Defined Soundbank, make sure" +
+					                 " to check the \"Is In User Define SoundBank\" box in the editor.");
+				}
+				else
+				{
+					Debug.LogError($"Could not find addressable bank asset : {assetPath}");
+				}
 			}
+			
 			return asset;
 		}
 #endif

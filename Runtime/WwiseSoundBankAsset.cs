@@ -9,6 +9,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	{
 		[SerializeField]
 		public List<string> eventNames;
+
+		[SerializeField] public bool isAutoBank;
 		
 		public override string GetRelativeFilePath()
 		{

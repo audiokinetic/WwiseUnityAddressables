@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using System.Xml;
@@ -40,6 +41,16 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static string GetWwisePlatformNameFromBuildTarget(BuildTarget platform)
 		{
 			return AkBuildPreprocessor.GetPlatformName(platform);
+		}
+
+		public static bool IsAutoBank(string assetPath)
+		{
+			var banksPath = GetFullSoundbanksPath() + Path.DirectorySeparatorChar;
+			var assetsFullPath = Path.GetFullPath(assetPath);
+			
+			string directoryName = Path.GetDirectoryName(assetsFullPath);
+			var pathContent = directoryName.Split(Path.DirectorySeparatorChar).ToList();
+			return pathContent.Contains("Event");
 		}
 
 		public static void ParseAssetPath(string assetPath, out string platform, out string language)
