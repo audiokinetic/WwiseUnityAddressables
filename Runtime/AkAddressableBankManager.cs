@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -56,7 +55,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			private set { Instance = value; }
 		}
-
+		
 		private uint? m_wwiseMajorVersion = null;
 		public uint WwiseMajorVersion
 		{
@@ -196,9 +195,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnloadBank(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
 			}
 		}
-
 		//Todo : support decoding banks and saving decoded banks
-		public void LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
+		public async Task LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
 		{
 			bank.decodeBank = decodeBank;
 			bank.saveDecodedBank = saveDecodedBank;
@@ -266,9 +264,16 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-			LoadBankAsync(bank, bankData, loadAsync);
+			if (loadAsync)
+			{
+				await LoadBankAsync(bank, bankData, true);
+			}
+			else
+			{
+				LoadBankAsync(bank, bankData, false);
+			}
 		}
-
+		
 		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
 		{
 			var asyncHandle = bankData.LoadAssetAsync<WwiseSoundBankAsset>();
@@ -302,7 +307,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (result == AKRESULT.AK_Success)
 				{
 					bank.soundbankId = bankID;
-					bank.loadState = BankLoadState.Loaded;
+					//Auto bank will set itself as loaded later
+					if(!bank.isAutoBank)
+					{
+						bank.loadState = BankLoadState.Loaded;
+					}
 				}
 				else
 				{
@@ -344,13 +353,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							{
 								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
 							}, Addressables.MergeMode.Union, false);
-#if UNITY_WEBGL && !UNITY_EDITOR
-							// On WebGL, we MUST load asynchronously in order to yield back to the browser.
-							// Failing to do so will result in the thread blocking forever and the asset will never be loaded.
+
 							await streamingAssetAsyncHandle.Task;
-#else
-							streamingAssetAsyncHandle.WaitForCompletion();
-#endif
 
 							Addressables.Release(streamingAssetAsyncHandle);
 						}
@@ -452,6 +456,36 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
+		public void OnAutoBankLoaded(WwiseAddressableSoundBank bank)
+		{
+			bank.loadState = BankLoadState.Loaded;
+			FireEventOnBankLoad(bank, false);
+		}
+
+		private void FireEventOnBankLoad(WwiseAddressableSoundBank bank, bool skipAutoBank)
+		{
+			//Fire any events that were waiting on the bank load
+			var eventsToRemove = new List<uint>();
+			foreach (var e in m_eventsToFireOnBankLoad)
+			{
+				if (bank.eventNames.Contains(e.Value.eventName))
+				{
+					if (skipAutoBank && bank.isAutoBank)
+						continue;
+
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
+					MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
+					handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
+					eventsToRemove.Add(e.Key);
+				}
+			}
+
+			foreach (var e in eventsToRemove)
+			{
+				m_eventsToFireOnBankLoad.TryRemove(e, out _);
+			}
+		}
+
 		private void OnBankLoaded(WwiseAddressableSoundBank bank)
 		{
 			if (bank.loadState == BankLoadState.Loaded)
@@ -469,23 +503,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					}
 				}
 
-				//Fire any events that were waiting on the bank load
-				var eventsToRemove = new List<uint>();
-				foreach (var e in m_eventsToFireOnBankLoad)
-				{
-					if (bank.eventNames.Contains(e.Value.eventName))
-					{
-						UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
-						MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
-						handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
-						eventsToRemove.Add(e.Key);
-					}
-				}
-
-				foreach (var e in eventsToRemove)
-				{
-					m_eventsToFireOnBankLoad.TryRemove(e, out _);
-				}
+				FireEventOnBankLoad(bank, true);
 			}
 
 			//Reset bank state if load failed

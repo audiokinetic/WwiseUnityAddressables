@@ -42,6 +42,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		[System.NonSerialized]
 		internal int refCount;
+		
+		[System.NonSerialized]
+		internal bool isAutoBank;
 
 #if UNITY_EDITOR
 		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
@@ -51,6 +54,21 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public uint SoundbankId
 		{
 			get { return soundbankId; }
+		}
+
+		public BankLoadState LoadState
+
+		{
+			get { return loadState; }
+		}
+
+		public bool IsAutoBank
+		{
+			get { return isAutoBank; }
+			set
+			{
+				isAutoBank = value;
+			}
 		}
 
 		public Dictionary<string, AssetReferenceWwiseBankData> Data
