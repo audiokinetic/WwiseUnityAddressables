@@ -4,7 +4,8 @@
     "references": [
         "Unity.Addressables",
         "Unity.ResourceManager",
-        "AK.Wwise.Unity.API"
+        "AK.Wwise.Unity.API",
+        "AK.Wwise.Unity.ProjectDB"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
