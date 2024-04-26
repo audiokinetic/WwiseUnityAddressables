@@ -45,6 +45,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		
 		[System.NonSerialized]
 		internal bool isAutoBank;
+		
+		[System.NonSerialized]
+		internal uint bankType;
 
 #if UNITY_EDITOR
 		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
@@ -68,6 +71,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			set
 			{
 				isAutoBank = value;
+			}
+		}
+
+		public string CurrentLanguage
+		{
+			get { return currentLanguage; }
+			set
+			{
+				currentLanguage = value;
 			}
 		}
 

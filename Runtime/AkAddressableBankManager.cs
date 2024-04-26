@@ -148,6 +148,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
+		public void SetLanguageAndReloadLocalizedBanks(string language, List<WwiseAddressableSoundBank> addressableBanksList)
+		{
+			foreach (var bank in addressableBanksList)
+			{
+				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
+			}
+			UnloadInitBank();
+			AkSoundEngine.SetCurrentLanguage(language);
+			AkSoundEngine.RenderAudio();
+#if WWISE_ADDRESSABLES_POST_2023
+			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+#else
+			LoadInitBank();
+#endif
+		}
+
 		public void SetLanguageAndReloadLocalizedBanks(string language)
 		{
 			var banksToReload = new List<WwiseAddressableSoundBank>();
@@ -161,19 +177,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				return;
 			}
-			foreach (var bank in banksToReload)
-			{
-				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
-			}
-			UnloadInitBank();
-			AkSoundEngine.SetCurrentLanguage(language);
-			AkSoundEngine.RenderAudio();
-#if WWISE_ADDRESSABLES_POST_2023
-			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
-#else
-			LoadInitBank();
-#endif
-
+			SetLanguageAndReloadLocalizedBanks(language, banksToReload);
 			foreach (var bank in banksToReload)
 			{
 				LoadBank(bank, bank.decodeBank, bank.saveDecodedBank);
@@ -307,6 +311,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (result == AKRESULT.AK_Success)
 				{
 					bank.soundbankId = bankID;
+					bank.bankType = bankType;
 					//Auto bank will set itself as loaded later
 					if(!bank.isAutoBank)
 					{
@@ -399,8 +404,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (bank.loadState == BankLoadState.Loaded)
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
-				AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
-
+				if (bank.bankType != 0)
+				{
+					AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
+					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
+				}
+				else
+				{
+					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
+				}
 			}
 
 			m_banksToUnload.TryRemove(bank.name, out _);
