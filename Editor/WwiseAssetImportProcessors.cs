@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEditor.AddressableAssets;
@@ -91,7 +91,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 #if! WWISE_ADDRESSABLES_24_1_OR_LATER
-		internal static void AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
+		internal static async Task AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
 		{
 			try
 			{
@@ -103,7 +103,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string language;
 					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 
-					var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
+					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name, language);
 
 					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
 					{
@@ -211,7 +211,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return group;
 		}
 
-		internal static void AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<string> bankAssetsAdded)
+		internal static async Task AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<string> bankAssetsAdded)
 		{
 			List<CreateAssetEntry> itemsToCreate = new List<CreateAssetEntry>();
 			try
@@ -286,7 +286,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					if (!string.IsNullOrEmpty(platform))
 					{
-						var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
+						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name, language);
 						if (soundbankInfos.ContainsKey(name))
 						{
 							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());

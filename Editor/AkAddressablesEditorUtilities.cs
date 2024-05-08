@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEditor;
 using System.Xml;
 
@@ -14,9 +15,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	[InitializeOnLoad]
 	public class AkAddressablesEditorUtilities : MonoBehaviour
 	{
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-		public static Dictionary<string, WwiseRefPlatform> platformsInfo = new Dictionary<string, WwiseRefPlatform>();
-#endif
 		static AkAddressablesEditorUtilities()
 		{
 			WwiseAddressableSoundBank.GetWwisePlatformNameFromBuildTarget = GetWwisePlatformNameFromBuildTarget;
@@ -125,90 +123,62 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
-		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, WwiseRefSoundBank sbInfo)
+		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, AkWwiseCRefSoundBank sbInfo)
 		{
 			soundBankDict.TryAdd(bankName, new SoundBankEntry());
 			soundBankDict[bankName][bankLanguage] = new SoundBankInfo();
-			foreach (var soundBankMedia in sbInfo.Medias)
+			for (int i = 0; i < sbInfo.MediasCount; ++i)
 			{
-				RecordMediaFile(soundBankDict, bankName, soundBankMedia.ShortId.ToString(), soundBankMedia.Language); 
+				RecordMediaFile(soundBankDict, bankName, sbInfo.Medias[i].ShortId.ToString(), sbInfo.Medias[i].Language); 
+
 			}
-			foreach (var soundBankEvent in sbInfo.Events)
+			for (int i = 0; i < sbInfo.EventSCount; ++i)
 			{
-				RecordEvent(soundBankDict, bankName, sbInfo.Info.LanguageName, soundBankEvent.Info.Name);
+				RecordEvent(soundBankDict, bankName, sbInfo.Language, sbInfo.Events[i].Name);
 			}
-			soundBankDict[bankName][sbInfo.Info.LanguageName].isUserBank = sbInfo.Info.BIsUserBank;
+			soundBankDict[bankName][sbInfo.Language].isUserBank = sbInfo.IsUserBank;
 		}
 		
-		public static PlatformEntry ExecuteUpdate(string platformName, string newBankName)
+		public static async Task<PlatformEntry> ExecuteUpdate(string platformName, string newBankName, string language)
 		{
+			AkProjectDB.SetCurrentPlatform(platformName);
+			AkProjectDB.SetCurrentLanguage(language);
+			
 			bool doUpdate = false;
 			if (!soundbanksInfo.ContainsKey(platformName))
 			{
 				soundbanksInfo[platformName] = new PlatformEntry();
-				WwiseRefPlatform platformInfo = AkProjectDB.GetPlatform(platformName);
+				AkWwiseCRefPlatform platformInfo = new AkWwiseCRefPlatform(platformName);
 				if (platformInfo.Name == null)
 				{
-					AkProjectDB.Init(AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName);
-					platformInfo = AkProjectDB.GetPlatform(platformName);
-				}
-
-				if (platformInfo.Name != null)
-				{
-					platformsInfo[platformName] = platformInfo;
-				}
-				else
-				{
-					UnityEngine.Debug.LogError(
-						$"Platform {platformName} is not present in the project Database. Is it a valid platform?");
+					await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
 				}
 				doUpdate = true;
 			}
-			else if (soundbanksInfo.ContainsKey(platformName) && !soundbanksInfo[platformName].ContainsKey(newBankName))
+			else if (!soundbanksInfo[platformName].ContainsKey(newBankName) || !soundbanksInfo[platformName][newBankName].ContainsKey(language))
 			{
 				doUpdate = true;
 			}
 
 			if (doUpdate)
 			{
-				UpdatePlatformEntry(soundbanksInfo[platformName], newBankName, platformName);
+				await UpdatePlatformEntry(soundbanksInfo[platformName], newBankName, platformName, language);
 			}
 
 			return soundbanksInfo[platformName];
 		}
 		
-		public static void UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName)
+		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language)
 		{
-			WwiseRefSoundBank sbInfo = AkProjectDB.GetSoundBankRefString(newBankName);
-			if (!sbInfo.Info.BIsValid)
+			AkWwiseCRefSoundBank sbInfo = new AkWwiseCRefSoundBank(newBankName);
+			if (!sbInfo.IsValid)
 			{
-				AkProjectDB.Init("E:\\Code\\Gyms\\WwiseProject\\GeneratedSoundBanks", platformName);
-				sbInfo = AkProjectDB.GetSoundBankRefString(newBankName);
+				await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
+				sbInfo = new AkWwiseCRefSoundBank(newBankName);
 			}
-			if (sbInfo.Info.BIsValid && sbInfo.Info.LanguageName == "SFX")
+			if (sbInfo.IsValid)
 			{
-				AddSoundBank(newBankName, "SFX", ref soundBanks, sbInfo);
-			}
-			else
-			{
-				//Check Localized
-				bool isLocalized = false;
-				WwiseRefLanguage[] languages = AkProjectDB.GetAllLanguages();
-				foreach (var language in languages)
-				{
-					AkProjectDB.SetCurrentLanguage(language.Id, language.Name);
-					sbInfo = AkProjectDB.GetSoundBankRefString(newBankName);
-					if (sbInfo.Info.BIsValid)
-					{
-						AddSoundBank(newBankName, language.Name, ref soundBanks, sbInfo);
-						isLocalized = true;
-					}
-				}
-				if (!isLocalized)
-				{
-					UnityEngine.Debug.LogError(
-						$"Bank {newBankName} is not present in the project DB. Have the sounbanks been generated?");
-				}
+				AddSoundBank(newBankName, language, ref soundBanks, sbInfo);
 			}
 			soundBanks.lastParseTime = DateTime.Now.Ticks;
 			AssetDatabase.SaveAssets();
@@ -388,7 +358,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 #endif
 		//Parse soundbank xml file to get a dict of the streaming wem files
-		public static PlatformEntry ParsePlatformSoundbanksXML(string platformName, string newBankName)
+		public static async Task<PlatformEntry> ParsePlatformSoundbanksXML(string platformName, string newBankName, string language)
 		{
 			if (platformName == null)
 			{
@@ -414,7 +384,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
-			return ExecuteUpdate(platformName, newBankName);
+			return await ExecuteUpdate(platformName, newBankName, language);
 #else
 			return ExecuteParse(platformName, newBankName, xmlFilename);
 #endif

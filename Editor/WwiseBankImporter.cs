@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 
 #if UNITY_2020_2_OR_NEWER
@@ -18,6 +19,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	{
 		public override void OnImportAsset(AssetImportContext ctx)
 		{
+			ImportAssetAsync(ctx);
+		}
+
+		private async Task ImportAssetAsync(AssetImportContext ctx)
+		{
 			string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
 
 			string platform;
@@ -29,8 +35,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
 				return;
 			}
-
-			var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, assetName);
+			
+			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, assetName, language);
 
 			if (soundbankInfos == null)
 			{
