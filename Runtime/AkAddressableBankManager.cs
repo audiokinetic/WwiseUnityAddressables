@@ -135,7 +135,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var m_banksToReload = new ConcurrentDictionary<string, WwiseAddressableSoundBank>(m_AddressableBanks);
 			UnloadAllBanks();
 			UnloadInitBank();
-#if WWISE_ADDRESSABLES_POST_2023
+#if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();
@@ -157,7 +157,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			UnloadInitBank();
 			AkSoundEngine.SetCurrentLanguage(language);
 			AkSoundEngine.RenderAudio();
-#if WWISE_ADDRESSABLES_POST_2023
+#if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();
