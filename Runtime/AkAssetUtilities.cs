@@ -32,6 +32,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var assetPath = System.IO.Path.Combine(GetSoundbanksPath(), name + ".asset");
 			return new AssetReferenceWwiseAddressableBank(AssetDatabase.AssetPathToGUID(assetPath));
 		}
+#if !WWISE_ADDRESSABLES_24_1_OR_LATER
+		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name)
+		{
+			//Unity Integration 2023.1 does not support Auto-Banks
+			return GetAddressableBankAsset(name, false);
+		}
+#endif
 
 		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name, bool IsLookingForAutoBank)
 		{

@@ -389,11 +389,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return ExecuteParse(platformName, newBankName, xmlFilename);
 #endif
 		}
+
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)
 		{
 			if (!WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name))
 			{
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
 				WwiseEventReference.FindEventReferenceAndSetAddressableBank(addressableBankAsset, name);
+#endif
 			}
 		}
 
