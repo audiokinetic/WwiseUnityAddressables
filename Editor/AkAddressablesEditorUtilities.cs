@@ -123,7 +123,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
-		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, AkWwiseCRefSoundBank sbInfo)
+		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, WwiseSoundBankRef sbInfo)
 		{
 			soundBankDict.TryAdd(bankName, new SoundBankEntry());
 			soundBankDict[bankName][bankLanguage] = new SoundBankInfo();
@@ -148,7 +148,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (!soundbanksInfo.ContainsKey(platformName))
 			{
 				soundbanksInfo[platformName] = new PlatformEntry();
-				AkWwiseCRefPlatform platformInfo = new AkWwiseCRefPlatform(platformName);
+				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{
 					await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
@@ -170,11 +170,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		
 		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language)
 		{
-			AkWwiseCRefSoundBank sbInfo = new AkWwiseCRefSoundBank(newBankName);
+			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
 			if (!sbInfo.IsValid)
 			{
 				await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
-				sbInfo = new AkWwiseCRefSoundBank(newBankName);
+				sbInfo = new WwiseSoundBankRef(newBankName);
 			}
 			if (sbInfo.IsValid)
 			{
