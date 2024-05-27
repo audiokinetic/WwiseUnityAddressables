@@ -11,9 +11,11 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 		if(m_Instance != null)
 		{
 			InitializationDelegate copyInitialize = m_Instance.initializationDelegate;
+			ReInitializationDelegate copyReInitialize = m_Instance.reInitializationDelegate;
 			TerminationDelegate copyTerminate = m_Instance.terminationDelegate;
 			m_Instance = new AkAddressablesSoundEngineInitialization();
 			m_Instance.initializationDelegate = copyInitialize;
+			m_Instance.reInitializationDelegate = copyReInitialize;
 			m_Instance.terminationDelegate = copyTerminate;
 		}
 		else
