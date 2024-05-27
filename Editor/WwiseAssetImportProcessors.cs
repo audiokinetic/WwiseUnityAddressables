@@ -54,9 +54,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			UpdateAssetReferences(importedAssets);
 			RemoveAssetReferences(deletedAssets);
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			WarnForInvalidEntry();
+#endif
 		}
-
-		public static void UpdateAssetReferences(string[] assets)
+		
+		public static async Task UpdateAssetReferences(string[] assets)
 		{
 			HashSet<string> bankAssetsToProcess = new HashSet<string>();
 			HashSet<string> streamingAssetsToProcess = new HashSet<string>();
@@ -78,7 +81,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache =
 					new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
-				AddBankReferenceToAddressableBankAsset(addressableAssetCache, bankAssetsToProcess);
+				await AddBankReferenceToAddressableBankAsset(addressableAssetCache, bankAssetsToProcess);
 				AddAssetsToAddressablesGroup(bankAssetsToProcess);
 			}
 
@@ -103,7 +106,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string language;
 					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 
-					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name, language);
+					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
 
 					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
 					{
@@ -186,8 +189,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				RemoveAssetsFromAddressables(bankAssetsToProcess);
 			}
 		}
-
-
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+		public static void WarnForInvalidEntry()
+		{
+			foreach (var soundbankInfo in AkAddressablesEditorUtilities.SoundbanksInfo)
+			{
+				if (soundbankInfo.Value.containsInvalidEntry)
+				{
+					string platform = soundbankInfo.Key;
+					string destinationBasePath;
+					string sourceBasePath;
+					AkBasePathGetter.GetSoundBankPaths(platform, out sourceBasePath, out destinationBasePath);
+					Debug.LogError($"Invalid entry detected in the Soundbanks information for Platform: {platform}. Please make sure Object GUID and Object Path are checked in the WwiseProject. Then clear {sourceBasePath} and regenerate the Soundbanks.");
+				}
+			}
+		}
+#endif
 		struct CreateAssetEntry
 		{
 			public WwiseAddressableSoundBank Asset;
@@ -286,7 +303,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					if (!string.IsNullOrEmpty(platform))
 					{
-						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name, language);
+						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
 						if (soundbankInfos.ContainsKey(name))
 						{
 							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
@@ -297,7 +314,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							Debug.LogWarning($"Could not update {addressableBankAsset.name} with bank located at {bankPath}");
 						}
-
 					}
 				}
 			}

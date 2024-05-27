@@ -19,10 +19,16 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			WwiseAddressableSoundBank.GetWwisePlatformNameFromBuildTarget = GetWwisePlatformNameFromBuildTarget;
 		}
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+		static void RefreshIsJsonFileMissing()
+		{
+			AkProjectDB.SoundBankDirectoryUpdated -= RefreshIsJsonFileMissing;
+			isJsonFileMissing = false;
+		}
+		private static bool isJsonFileMissing = false;
+#endif
 
-		public static Dictionary<string, PlatformEntry> soundbanksInfo = new Dictionary<string, PlatformEntry>();
-		
-		
+		public static Dictionary<string, PlatformEntry> SoundbanksInfo = new Dictionary<string, PlatformEntry>();
 
 		public class SoundBankInfo
 		{
@@ -41,7 +47,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			public long lastParseTime;
 			public Dictionary<string, List<string>> eventToSoundBankMap = new Dictionary<string, List<string>>();
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			public bool containsInvalidEntry = false;
 
+			public PlatformEntry()
+			{
+				AkProjectDB.SoundBankDirectoryUpdated += ResetInvalidEntry;
+			}
+
+			private void ResetInvalidEntry()
+			{
+				containsInvalidEntry = false;
+			}
+#endif
 		}
 
 		public static string GetWwisePlatformNameFromBuildTarget(BuildTarget platform)
@@ -119,9 +137,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static void ClearSoundbankInfo()
 		{
-			soundbanksInfo.Clear();
+			SoundbanksInfo.Clear();
 		}
-
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, WwiseSoundBankRef sbInfo)
 		{
@@ -138,16 +155,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			soundBankDict[bankName][sbInfo.Language].isUserBank = sbInfo.IsUserBank;
 		}
-		
 		public static async Task<PlatformEntry> ExecuteUpdate(string platformName, string newBankName, string language)
 		{
 			AkProjectDB.SetCurrentPlatform(platformName);
 			AkProjectDB.SetCurrentLanguage(language);
 			
 			bool doUpdate = false;
-			if (!soundbanksInfo.ContainsKey(platformName))
+			if (!SoundbanksInfo.ContainsKey(platformName))
 			{
-				soundbanksInfo[platformName] = new PlatformEntry();
+				SoundbanksInfo[platformName] = new PlatformEntry();
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{
@@ -155,19 +171,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 				doUpdate = true;
 			}
-			else if (!soundbanksInfo[platformName].ContainsKey(newBankName) || !soundbanksInfo[platformName][newBankName].ContainsKey(language))
+			else if (!SoundbanksInfo[platformName].ContainsKey(newBankName) || !SoundbanksInfo[platformName][newBankName].ContainsKey(language))
 			{
 				doUpdate = true;
 			}
-
+			if (SoundbanksInfo.ContainsKey(platformName) && SoundbanksInfo[platformName].containsInvalidEntry)
+			{
+				doUpdate = false;
+			}
 			if (doUpdate)
 			{
-				await UpdatePlatformEntry(soundbanksInfo[platformName], newBankName, platformName, language);
+				await UpdatePlatformEntry(SoundbanksInfo[platformName], newBankName, platformName, language);
 			}
 
-			return soundbanksInfo[platformName];
+			return SoundbanksInfo[platformName];
 		}
-		
+
 		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language)
 		{
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
@@ -180,12 +199,16 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				AddSoundBank(newBankName, language, ref soundBanks, sbInfo);
 			}
+			else
+			{
+				soundBanks.containsInvalidEntry = true;
+			}
 			soundBanks.lastParseTime = DateTime.Now.Ticks;
 			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
 		}
+#endif
 
-#else
 		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict)
 		{
 			if (!soundBankDict.ContainsKey(bankName))
@@ -197,18 +220,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static PlatformEntry ExecuteParse(string platformName, string newBankName, string xmlFilename)
 		{
 			bool doParse = false;
-			if (!soundbanksInfo.ContainsKey(platformName))
+			if (!SoundbanksInfo.ContainsKey(platformName))
 			{
 				doParse = true;
 			}
-			else if (soundbanksInfo.ContainsKey(platformName) && !soundbanksInfo[platformName].ContainsKey(newBankName))
+			else if (SoundbanksInfo.ContainsKey(platformName) && !SoundbanksInfo[platformName].ContainsKey(newBankName))
 			{
 				doParse = true;
 			}
 			else
 			{
 				var fileModifiedTime = System.IO.File.GetLastWriteTime(xmlFilename);
-				if (fileModifiedTime.Ticks > soundbanksInfo[platformName].lastParseTime)
+				if (fileModifiedTime.Ticks > SoundbanksInfo[platformName].lastParseTime)
 				{
 					doParse = true;
 				}
@@ -232,7 +255,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				XmlElement root = doc.DocumentElement;
 				if (!Int32.TryParse(root.GetAttribute("SchemaVersion"), out int schemaVersion))
 				{
-					Debug.LogError($"Could not parse SoundBanksInfo.xml for {platformName}. Check {xmlFilename} for possible corruption.");
+					Debug.LogError($"Could not parse SoundbanksInfo.xml for {platformName}. Check {xmlFilename} for possible corruption.");
 					return null;
 				}
 
@@ -245,15 +268,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					soundBanks = ParseSoundBanksInfoXmlv15(doc);
 				}
 				soundBanks.lastParseTime = DateTime.Now.Ticks;
-				soundbanksInfo[platformName] = soundBanks;
+				SoundbanksInfo[platformName] = soundBanks;
 			}
 
-			if (soundbanksInfo[platformName].eventToSoundBankMap.Count == 0)
+			if (SoundbanksInfo[platformName].eventToSoundBankMap.Count == 0)
 			{
-				Debug.LogWarning($"Could not retrieve event data for {platformName} from SoundBanksInfo.xml. Check {xmlFilename} for possible corruption.");
+				Debug.LogWarning($"Could not retrieve event data for {platformName} from SoundbanksInfo.xml. Check {xmlFilename} for possible corruption.");
 			}
 
-			return soundbanksInfo[platformName];
+			return SoundbanksInfo[platformName];
 		}
 
 		private static PlatformEntry ParseSoundBanksInfoXmlv16(XmlDocument doc)
@@ -356,16 +379,29 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			return soundBanks;
 		}
-#endif
 		//Parse soundbank xml file to get a dict of the streaming wem files
-		public static async Task<PlatformEntry> ParsePlatformSoundbanksXML(string platformName, string newBankName, string language)
+		public static async Task<PlatformEntry> ParsePlatformSoundbanks(string platformName, string newBankName, string language)
 		{
 			if (platformName == null)
 			{
 				platformName = AkBasePathGetter.GetPlatformName();
 			}
 
-			string sourceFolder = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName);
+			var sourceFolder = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName);
+			
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			var jsonFilename = Path.Combine(sourceFolder, "SoundbanksInfo.json");
+			if (File.Exists(jsonFilename))
+			{
+				return await ExecuteUpdate(platformName, newBankName, language);
+			}
+			if (!isJsonFileMissing && AkUtilities.IsAutoBankEnabled())
+			{
+				AkProjectDB.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
+				isJsonFileMissing = true;
+				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
+			}
+#endif
 			var xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
 			if (!File.Exists(xmlFilename))
 			{
@@ -379,15 +415,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
 				if(!File.Exists(xmlFilename))
 				{
-					Debug.LogError($"Failed to import {newBankName}. Could not find SoundbanksInfo for {platformName} platform. Make sure your SoundBanks are generated and that the setting \"Generate XML Metadata\" is enabled.");
+					Debug.LogError($"Failed to import {newBankName}. Could not find SoundbanksInfo for {platformName} platform. Make sure your SoundBanks are generated and that the setting \"Generate XML Metadata\" is enabled. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 					return null;
 				}
 			}
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-			return await ExecuteUpdate(platformName, newBankName, language);
-#else
 			return ExecuteParse(platformName, newBankName, xmlFilename);
-#endif
 		}
 
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)

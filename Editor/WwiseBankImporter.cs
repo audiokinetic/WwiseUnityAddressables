@@ -36,7 +36,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return;
 			}
 			
-			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, assetName, language);
+			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language);
 
 			if (soundbankInfos == null)
 			{
