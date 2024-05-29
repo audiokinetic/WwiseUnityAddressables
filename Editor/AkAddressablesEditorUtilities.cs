@@ -167,7 +167,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{
-					await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
+					await AkProjectDB.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				}
 				doUpdate = true;
 			}
@@ -192,7 +192,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
 			if (!sbInfo.IsValid)
 			{
-				await AkProjectDB.Init(AkBasePathGetter.GetFullSoundBankPathEditor(), platformName, language);
+				await AkProjectDB.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				sbInfo = new WwiseSoundBankRef(newBankName);
 			}
 			if (sbInfo.IsValid)
