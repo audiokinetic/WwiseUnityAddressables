@@ -12,7 +12,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_Instance == null)
 				{
-#if WWISE_ADDRESSABLES_POST_2023
+#if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 					AkAddressablesSoundEngineInitialization.ResetInstance();
 #endif
 #if UNITY_EDITOR
@@ -29,7 +29,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-#if !WWISE_ADDRESSABLES_POST_2023
+#if !(WWISE_ADDRESSABLES_POST_2023 || WWISE_ADDRESSABLES_23_1_OR_LATER)
 		protected override void LoadInitBank()
 		{
 			AkAddressableBankManager.Instance.LoadInitBank();

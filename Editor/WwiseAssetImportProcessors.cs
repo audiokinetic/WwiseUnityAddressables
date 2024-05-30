@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEditor.AddressableAssets;
@@ -54,9 +54,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			UpdateAssetReferences(importedAssets);
 			RemoveAssetReferences(deletedAssets);
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			WarnForInvalidEntry();
+#endif
 		}
-
-		public static void UpdateAssetReferences(string[] assets)
+		
+		public static async Task UpdateAssetReferences(string[] assets)
 		{
 			HashSet<string> bankAssetsToProcess = new HashSet<string>();
 			HashSet<string> streamingAssetsToProcess = new HashSet<string>();
@@ -78,17 +81,84 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache =
 					new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
-				AddBankReferenceToAddressableBankAsset(addressableAssetCache, bankAssetsToProcess);
+				await AddBankReferenceToAddressableBankAsset(addressableAssetCache, bankAssetsToProcess);
 				AddAssetsToAddressablesGroup(bankAssetsToProcess);
 			}
 
 			if (streamingAssetsToProcess.Count > 0)
 			{
+#if! WWISE_ADDRESSABLES_24_1_OR_LATER
 				AddStreamedAssetsToBanks(streamingAssetsToProcess);
+#endif
 				AddAssetsToAddressablesGroup(streamingAssetsToProcess);
 			}
 		}
+#if! WWISE_ADDRESSABLES_24_1_OR_LATER
+		internal static async Task AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
+		{
+			try
+			{
+				foreach (var assetPath in streamingAssetsAdded)
+				{
+					string name = Path.GetFileNameWithoutExtension(assetPath);
 
+					string platform;
+					string language;
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+
+					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
+
+					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
+					{
+						foreach (var bankName in bankNames)
+						{
+							string bankAssetDir = Path.GetDirectoryName(assetPath);
+							string addressableBankAssetDir = AkAssetUtilities.GetSoundbanksPath();
+							string addressableBankAssetPath =
+								System.IO.Path.Combine(addressableBankAssetDir, bankName + ".asset");
+							var bankAsset =
+								AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankAssetPath);
+
+							if (bankAsset == null)
+							{
+								continue;
+							}
+
+							if (!string.IsNullOrEmpty(platform))
+							{
+								if (!soundbankInfos[bankName].TryGetValue(language,
+									    out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
+								{
+									if (int.TryParse(language, out int result))
+										UnityEngine.Debug.LogError(
+											"Wwise Unity Addressables: Sub-folders for generated files currently not supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
+									else
+										UnityEngine.Debug.LogError(
+											$"Wwise Unity Addressables: Unable to process asset at path {assetPath}: Unrecognized language {language}");
+									continue;
+								}
+
+								List<string> MediaIds = sbInfo.streamedFileIds;
+								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[bankName].Keys.ToList());
+								bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
+								EditorUtility.SetDirty(bankAsset);
+							}
+						}
+					}
+					else
+					{
+						UnityEngine.Debug.LogWarning(
+							$"Wwise Unity Addressables: Can't find containing SoundBank(s) for event {name}");
+					}
+				}
+			}
+			finally
+			{
+				AssetDatabase.SaveAssets();
+				AssetDatabase.Refresh();
+			}
+		}
+#endif
 		public static void RemoveAssetReferences(string[] deletedAssets)
 		{
 			HashSet<string> bankAssetsToProcess = new HashSet<string>();
@@ -119,8 +189,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				RemoveAssetsFromAddressables(bankAssetsToProcess);
 			}
 		}
-
-
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+		public static void WarnForInvalidEntry()
+		{
+			foreach (var soundbankInfo in AkAddressablesEditorUtilities.SoundbanksInfo)
+			{
+				if (soundbankInfo.Value.containsInvalidEntry)
+				{
+					string platform = soundbankInfo.Key;
+					string destinationBasePath;
+					string sourceBasePath;
+					AkBasePathGetter.GetSoundBankPaths(platform, out sourceBasePath, out destinationBasePath);
+					Debug.LogError($"Invalid entry detected in the Soundbanks information for Platform: {platform}. Please make sure Object GUID and Object Path are checked in the WwiseProject. Then clear {sourceBasePath} and regenerate the Soundbanks.");
+				}
+			}
+		}
+#endif
 		struct CreateAssetEntry
 		{
 			public WwiseAddressableSoundBank Asset;
@@ -144,7 +228,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return group;
 		}
 
-		internal static void AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<string> bankAssetsAdded)
+		internal static async Task AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<string> bankAssetsAdded)
 		{
 			List<CreateAssetEntry> itemsToCreate = new List<CreateAssetEntry>();
 			try
@@ -219,7 +303,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					if (!string.IsNullOrEmpty(platform))
 					{
-						var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
+						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
 						if (soundbankInfos.ContainsKey(name))
 						{
 							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
@@ -230,7 +314,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							Debug.LogWarning($"Could not update {addressableBankAsset.name} with bank located at {bankPath}");
 						}
-
 					}
 				}
 			}
@@ -275,71 +358,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					AkAddressablesEditorUtilities.FindAndSetBankReference(asset, bankName);
 				}
-			}
-		}
-
-		internal static void AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
-		{
-			try
-			{
-				foreach (var assetPath in streamingAssetsAdded)
-				{
-					string name = Path.GetFileNameWithoutExtension(assetPath);
-
-					string platform;
-					string language;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
-
-					var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanksXML(platform, name);
-
-					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
-					{
-						foreach (var bankName in bankNames)
-						{
-							string bankAssetDir = Path.GetDirectoryName(assetPath);
-							string addressableBankAssetDir = AkAssetUtilities.GetSoundbanksPath();
-							string addressableBankAssetPath =
-								System.IO.Path.Combine(addressableBankAssetDir, bankName + ".asset");
-							var bankAsset =
-								AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankAssetPath);
-
-							if (bankAsset == null)
-							{
-								continue;
-							}
-
-							if (!string.IsNullOrEmpty(platform))
-							{
-								if (!soundbankInfos[bankName].TryGetValue(language,
-									    out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
-								{
-									if (int.TryParse(language, out int result))
-										UnityEngine.Debug.LogError(
-											"Wwise Unity Addressables: Sub-folders for generated files currently not supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
-									else
-										UnityEngine.Debug.LogError(
-											$"Wwise Unity Addressables: Unable to process asset at path {assetPath}: Unrecognized language {language}");
-									continue;
-								}
-
-								List<string> MediaIds = sbInfo.streamedFileIds;
-								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[bankName].Keys.ToList());
-								bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
-								EditorUtility.SetDirty(bankAsset);
-							}
-						}
-					}
-					else
-					{
-						UnityEngine.Debug.LogWarning(
-							$"Wwise Unity Addressables: Can't find containing SoundBank(s) for event {name}");
-					}
-				}
-			}
-			finally
-			{
-				AssetDatabase.SaveAssets();
-				AssetDatabase.Refresh();
 			}
 		}
 
