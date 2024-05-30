@@ -11,7 +11,7 @@
         "AK.Wwise.Unity.API",
         "AK.Wwise.Unity.Addressables",
         "AK.Wwise.Unity.API.WwiseTypes",
-        "AK.Wwise.Unity.ProjectDB"
+        "AK.Wwise.Unity.ProjectDatabase"
     ],
     "includePlatforms": [
         "Editor"

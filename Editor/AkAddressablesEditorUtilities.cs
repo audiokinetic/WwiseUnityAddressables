@@ -22,7 +22,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 		static void RefreshIsJsonFileMissing()
 		{
-			AkProjectDB.SoundBankDirectoryUpdated -= RefreshIsJsonFileMissing;
+			WwiseProjectDatabase.SoundBankDirectoryUpdated -= RefreshIsJsonFileMissing;
 			isJsonFileMissing = false;
 		}
 		private static bool isJsonFileMissing = false;
@@ -52,7 +52,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			public PlatformEntry()
 			{
-				AkProjectDB.SoundBankDirectoryUpdated += ResetInvalidEntry;
+				WwiseProjectDatabase.SoundBankDirectoryUpdated += ResetInvalidEntry;
 			}
 
 			private void ResetInvalidEntry()
@@ -157,8 +157,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 		public static async Task<PlatformEntry> ExecuteUpdate(string platformName, string newBankName, string language)
 		{
-			AkProjectDB.SetCurrentPlatform(platformName);
-			AkProjectDB.SetCurrentLanguage(language);
+			WwiseProjectDatabase.SetCurrentPlatform(platformName);
+			WwiseProjectDatabase.SetCurrentLanguage(language);
 			
 			bool doUpdate = false;
 			if (!SoundbanksInfo.ContainsKey(platformName))
@@ -167,7 +167,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{
-					await AkProjectDB.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+					await WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				}
 				doUpdate = true;
 			}
@@ -192,7 +192,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
 			if (!sbInfo.IsValid)
 			{
-				await AkProjectDB.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+				await WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				sbInfo = new WwiseSoundBankRef(newBankName);
 			}
 			if (sbInfo.IsValid)
@@ -397,7 +397,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			if (!isJsonFileMissing && AkUtilities.IsAutoBankEnabled())
 			{
-				AkProjectDB.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
+				WwiseProjectDatabase.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
 				isJsonFileMissing = true;
 				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 			}
