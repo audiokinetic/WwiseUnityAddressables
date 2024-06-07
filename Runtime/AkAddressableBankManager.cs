@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -280,8 +281,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		
 		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
 		{
-			var asyncHandle = bankData.LoadAssetAsync<WwiseSoundBankAsset>();
+			AsyncOperationHandle asyncHandle = new AsyncOperationHandle<WwiseSoundBankAsset>();
 			WwiseSoundBankAsset soundBankAsset;
+			if (bankData.OperationHandle.IsValid())
+			{
+				soundBankAsset = (WwiseSoundBankAsset)bankData.Asset;
+				asyncHandle = bankData.OperationHandle;
+			}
+			else
+			{
+				asyncHandle = bankData.LoadAssetAsync<WwiseSoundBankAsset>();
+			}
 #if UNITY_WEBGL && !UNITY_EDITOR
 			// On WebGL, we MUST load asynchronously in order to yield back to the browser.
 			// Failing to do so will result in the thread blocking forever and the asset will never be loaded.
@@ -289,13 +299,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #else
 			if (loadAsync)
 			{
-				soundBankAsset = await asyncHandle.Task;
+				soundBankAsset = (WwiseSoundBankAsset)await asyncHandle.Task;
 			}
 			else
 			{
-				soundBankAsset = asyncHandle.WaitForCompletion();
+				soundBankAsset = (WwiseSoundBankAsset)asyncHandle.WaitForCompletion();
 			}
-#endif
+#endif	
 			//AsyncHandle gets corrupted in Unity 2021 but properly returns the loaded Asset as expected
 #if UNITY_2021_1_OR_NEWER
 			if (soundBankAsset)
@@ -318,7 +328,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						bank.loadState = BankLoadState.Loaded;
 					}
 				}
-				else
+				else if(result != AKRESULT.AK_BankAlreadyLoaded)
 				{
 					bank.soundbankId = INVALID_SOUND_BANK_ID;
 					bank.loadState = BankLoadState.LoadFailed;
@@ -374,8 +384,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
 			OnBankLoaded(bank);
-			Addressables.Release(asyncHandle);
-
+			if (asyncHandle.IsValid())
+			{
+				Addressables.Release(asyncHandle);
+			}
 		}
 		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = true)
 		{
@@ -397,6 +409,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if(bank.loadState == BankLoadState.Unloaded)
 			{
+				AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
 				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
 				return;
 			}
