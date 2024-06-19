@@ -149,7 +149,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				RecordMediaFile(soundBankDict, bankName, sbInfo.Medias[i].ShortId.ToString(), sbInfo.Medias[i].Language); 
 
 			}
-			for (int i = 0; i < sbInfo.EventSCount; ++i)
+			for (int i = 0; i < sbInfo.EventsCount; ++i)
 			{
 				RecordEvent(soundBankDict, bankName, sbInfo.Language, sbInfo.Events[i].Name);
 			}
