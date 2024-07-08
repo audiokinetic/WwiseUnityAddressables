@@ -325,6 +325,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
 							addressableBankAsset.AddOrUpdate(platform, language, new AssetReferenceWwiseBankData(AssetDatabase.AssetPathToGUID(bankPath)));
+
+							string mediaPath = Path.Combine(AkAssetUtilities.GetSoundbanksPath(), platform, "Media");
+							addressableBankAsset.SetStreamingMedia(platform, language, mediaPath, soundbankInfos[name][language].streamedFileIds);
 							EditorUtility.SetDirty(addressableBankAsset);
 						}
 						else
@@ -506,7 +509,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					groupEntriesModified.Add(groupEntry);
 				}
 			}
-
 			if (groupEntriesModified.Count > 0)
 			{
 				settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, groupEntriesModified, true);
