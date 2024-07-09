@@ -1,6 +1,6 @@
 {
   "name": "com.audiokinetic.wwise.addressables",
-  "version": "2023.1.2",
+  "version": "2023.1.5",
   "displayName": "Wwise Unity Addressables",
   "description": "Wwise Unity Addressables",
   "unity": "2018.4",

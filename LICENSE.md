@@ -9,5 +9,5 @@ may use these files in accordance with the end user license agreement provided
 with the software or, alternatively, in accordance with the terms contained in a
 written agreement between you and Audiokinetic Inc.
 
-Copyright (c) 2020 Audiokinetic Inc.
+Copyright (c) 2024 Audiokinetic Inc.
 ********************************************************************************
