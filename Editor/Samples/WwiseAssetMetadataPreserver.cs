@@ -29,7 +29,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	/* 
 	   This class provides the functionality preserve and restore Wwise addressable asset group and label metadata.
 	   This information is lost when the assets are deleted, and clearing the Wwise addressable asset folder is 
-	   the simplest way to repair broken WwiseAddressableSounbanks.
+	   the simplest way to repair broken WwiseAddressableSoundBanks.
 	   This class should be seen as an example of how to implement this functionality and not a complete solution.
 	*/
 	[InitializeOnLoad]
@@ -56,8 +56,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 
 		//Creates a AddressableMetadata asset for each Addressable wwise asset that keeps track of groups and labels.
-		//Metadata assets are created in their own folder in a heirarchy matching the wwise assets
-		//The folder heirarchy and asset name are used to match the assets on import
+		//Metadata assets are created in their own folder in a hierarchy matching the wwise assets
+		//The folder hierarchy and asset name are used to match the assets on import
 		[UnityEditor.MenuItem("Assets/Wwise/Addressables/Serialize addressable asset metadata")]
 		public static void PreserveAllWwiseAssetMetadata()
 		{
