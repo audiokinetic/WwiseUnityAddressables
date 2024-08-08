@@ -21,7 +21,7 @@ using UnityEngine;
 
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES && (WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023)
 
-public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitialization
+public class AkUnityAddressablesSoundEngineInitialization : AkUnitySoundEngineInitialization
 {
 	public static void ResetInstance()
 	{
@@ -32,7 +32,7 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 			ReInitializationDelegate copyReInitialize = m_Instance.reInitializationDelegate;
 #endif
 			TerminationDelegate copyTerminate = m_Instance.terminationDelegate;
-			m_Instance = new AkAddressablesSoundEngineInitialization();
+			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
 			m_Instance.initializationDelegate = copyInitialize;
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			m_Instance.reInitializationDelegate = copyReInitialize;
@@ -41,7 +41,7 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 		}
 		else
 		{
-			m_Instance = new AkAddressablesSoundEngineInitialization();
+			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
 		}
 	}
 

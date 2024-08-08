@@ -30,7 +30,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (m_Instance == null)
 				{
 #if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
-					AkAddressablesSoundEngineInitialization.ResetInstance();
+					AkUnityAddressablesSoundEngineInitialization.ResetInstance();
 #endif
 #if UNITY_EDITOR
 					var name = typeof(AkWwiseInitializationSettings).Name;

@@ -81,7 +81,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_wwiseMajorVersion == null)
 				{
-					m_wwiseMajorVersion = AkSoundEngine.GetMajorMinorVersion() >> 16;
+					m_wwiseMajorVersion = AkUnitySoundEngine.GetMajorMinorVersion() >> 16;
 				}
 				return (uint)m_wwiseMajorVersion;
 			}
@@ -173,8 +173,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
 			}
 			UnloadInitBank();
-			AkSoundEngine.SetCurrentLanguage(language);
-			AkSoundEngine.RenderAudio();
+			AkUnitySoundEngine.SetCurrentLanguage(language);
+			AkUnitySoundEngine.RenderAudio();
 #if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
@@ -271,7 +271,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			else
 			{
-				var currentLanguage = AkSoundEngine.GetCurrentLanguage();
+				var currentLanguage = AkUnitySoundEngine.GetCurrentLanguage();
 				if (bank.Data.ContainsKey(currentLanguage))
 				{
 					bankData = bank.Data[currentLanguage];
@@ -334,7 +334,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				var data = soundBankAsset.RawData;
 				bank.GCHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
 
-				var result = AkSoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID, out uint bankType);
+				var result = AkUnitySoundEngine.LoadBankMemoryCopy(bank.GCHandle.AddrOfPinnedObject(), (uint)data.Length, out uint bankID, out uint bankType);
 				if (result == AKRESULT.AK_Success)
 				{
 					bank.soundbankId = bankID;
@@ -426,7 +426,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if(bank.loadState == BankLoadState.Unloaded)
 			{
-				AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
+				AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
 				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
 				return;
 			}
@@ -436,12 +436,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
 				if (bank.bankType != 0)
 				{
-					AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
+					AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
+					AkUnitySoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
 				}
 				else
 				{
-					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
+					AkUnitySoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
 				}
 			}
 
@@ -562,7 +562,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		~AkAddressableBankManager()
 		{
-			AkSoundEngine.ClearBanks();
+			AkUnitySoundEngine.ClearBanks();
 		}
 	}
 }
