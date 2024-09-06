@@ -282,6 +282,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
 					m_AddressableBanks.TryRemove(bank.name, out _);
+					bank.loadState = BankLoadState.Unloaded;
 					return;
 				}
 			}
