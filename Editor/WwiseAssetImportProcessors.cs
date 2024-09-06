@@ -104,13 +104,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (streamingAssetsToProcess.Count > 0)
 			{
-#if! WWISE_ADDRESSABLES_24_1_OR_LATER
-				AddStreamedAssetsToBanks(streamingAssetsToProcess);
-#endif
+				await AddStreamedAssetsToBanks(streamingAssetsToProcess);
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
 				AddAssetsToAddressablesGroup(streamingAssetsToProcess);
+#endif
 			}
 		}
-#if! WWISE_ADDRESSABLES_24_1_OR_LATER
+
 		internal static async Task AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
 		{
 			try
@@ -175,7 +175,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				AssetDatabase.Refresh();
 			}
 		}
-#endif
 		public static void RemoveAssetReferences(string[] deletedAssets)
 		{
 			HashSet<string> bankAssetsToProcess = new HashSet<string>();
