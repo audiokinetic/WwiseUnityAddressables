@@ -431,7 +431,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		WaitingForInitBankToLoad,
 		Loading,
 		Loaded,
-		LoadFailed
+		LoadFailed,
+		TimedOut
 	}
 }
 #endif // AK_WWISE_ADDRESSABLES

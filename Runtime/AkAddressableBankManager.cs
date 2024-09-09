@@ -30,6 +30,8 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 #endif
 
 namespace AK.Wwise.Unity.WwiseAddressables
@@ -380,17 +382,26 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					{
 #if UNITY_EDITOR
 						if ((EditorSettings.enterPlayModeOptions & EnterPlayModeOptions.DisableDomainReload) != 0 || EditorApplication.isPlaying)
-#endif
 						{
+							var startingSceneName = SceneManager.GetActiveScene().name;
+#endif
+
 							var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
 							{
 								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
 							}, Addressables.MergeMode.Union, false);
 
 							await streamingAssetAsyncHandle.Task;
-
+#if UNITY_EDITOR
+							if (startingSceneName != SceneManager.GetActiveScene().name)
+							{
+								bank.loadState = BankLoadState.TimedOut;
+							}
+#endif
 							Addressables.Release(streamingAssetAsyncHandle);
+#if UNITY_EDITOR
 						}
+#endif
 					}
 				}
 			}
@@ -401,7 +412,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
-			OnBankLoaded(bank);
+			if(bank.loadState != BankLoadState.TimedOut)
+				OnBankLoaded(bank);
 			if (asyncHandle.IsValid())
 			{
 				Addressables.Release(asyncHandle);
