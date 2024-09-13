@@ -123,7 +123,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string language;
 					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
 
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+					var soundbankInfos = AkAddressablesEditorUtilities.GetPlatformSoundbanks(platform);
+#else
 					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
+#endif
 
 					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
 					{

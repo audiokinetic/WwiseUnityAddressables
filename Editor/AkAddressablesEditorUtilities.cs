@@ -183,8 +183,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				SoundbanksInfo[platformName] = new PlatformEntry();
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
-				{
-					await WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+				{ 
+					WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				}
 				doUpdate = true;
 			}
@@ -209,7 +209,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
 			if (!sbInfo.IsValid)
 			{
-				await WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+				WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				sbInfo = new WwiseSoundBankRef(newBankName);
 			}
 			if (sbInfo.IsValid)
@@ -395,6 +395,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			return soundBanks;
+		}
+
+		public static PlatformEntry GetPlatformSoundbanks(string platformName)
+		{
+			return SoundbanksInfo[platformName];
 		}
 		//Parse soundbank xml file to get a dict of the streaming wem files
 		public static async Task<PlatformEntry> ParsePlatformSoundbanks(string platformName, string newBankName, string language)
