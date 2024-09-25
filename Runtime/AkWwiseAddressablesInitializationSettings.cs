@@ -46,7 +46,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-#if !WWISE_ADDRESSABLES_POST_2023
+#if !WWISE_ADDRESSABLES_POST_2023 && !WWISE_ADDRESSABLES_23_1_OR_LATER
 		protected override void LoadInitBank()
 		{
 			AkAddressableBankManager.Instance.LoadInitBank();

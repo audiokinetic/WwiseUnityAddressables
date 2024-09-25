@@ -77,7 +77,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 
 					settings.MetadataPath = "WwiseAddressablesMetadata";
-					settings.UseSampleMetadataPreserver = false;
+					settings.UseSampleMetadataPreserver = true;
 				}
 			}
 			catch (System.Exception exception)
