@@ -221,8 +221,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				soundBanks.containsInvalidEntry = true;
 			}
 			soundBanks.lastParseTime = DateTime.Now.Ticks;
-			AssetDatabase.SaveAssets();
-			AssetDatabase.Refresh();
 		}
 #endif
 
