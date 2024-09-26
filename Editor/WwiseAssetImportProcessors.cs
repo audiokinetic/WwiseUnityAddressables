@@ -337,7 +337,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[(name,type)].Keys.ToList());
 							addressableBankAsset.AddOrUpdate(platform, language, new AssetReferenceWwiseBankData(AssetDatabase.AssetPathToGUID(bankPath)));
-
+							
 							EditorUtility.SetDirty(addressableBankAsset);
 						}
 						else

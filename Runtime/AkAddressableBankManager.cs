@@ -364,6 +364,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					{
 						bank.loadState = BankLoadState.Loaded;
 					}
+					else
+					{
+						bank.loadState = BankLoadState.WaitingForPrepareEvent;
+					}
 				}
 				else if(result != AKRESULT.AK_BankAlreadyLoaded)
 				{
@@ -405,7 +409,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 							var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
 							{
+#if UNITY_EDITOR
 								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
+#endif
 							}, Addressables.MergeMode.Union, false);
 
 							await streamingAssetAsyncHandle.Task;
@@ -447,7 +453,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-			if (bank.loadState == BankLoadState.Loading)
+			if (bank.loadState == BankLoadState.Loading || bank.loadState == BankLoadState.WaitingForPrepareEvent)
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} will be unloaded after it is done loading");
 				m_banksToUnload.TryAdd(bank.name, bank.name);
@@ -465,7 +471,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return;
 			}
 
-			if (bank.loadState == BankLoadState.Loaded)
+			if (bank.loadState == BankLoadState.Loaded || bank.loadState == BankLoadState.TimedOut)
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
 				if (bank.bankType != 0)
@@ -543,6 +549,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void OnAutoBankLoaded(WwiseAddressableSoundBank bank)
 		{
+			UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} AutoBank -  Bank ID : {bank.soundbankId}");
 			bank.loadState = BankLoadState.Loaded;
 			FireEventOnBankLoad(bank, false);
 		}
@@ -576,7 +583,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (bank.loadState == BankLoadState.Loaded)
 			{
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
-
 				if (InitBankLoaded && bank.name == InitBank.name)
 				{
 					foreach (var b in m_AddressableBanks.Values)
@@ -589,6 +595,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 
 				FireEventOnBankLoad(bank, true);
+			}
+			
+			else if (bank.loadState == BankLoadState.WaitingForPrepareEvent)
+			{
+				bank.BroadcastBankLoaded();
 			}
 
 			//Reset bank state if load failed

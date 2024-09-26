@@ -64,8 +64,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		internal bool isAutoBank;
 		
 		[System.NonSerialized]
-		internal uint bankType;
-
+		internal uint bankType;		
+		
 #if UNITY_EDITOR
 		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
 		public static GetWwisePlatformNameDelegate GetWwisePlatformNameFromBuildTarget;
@@ -123,6 +123,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #else
 				return currentPlatformAssets.LocalizedStreamingMedia;
 #endif
+			}
+		}
+		
+		public delegate void BankLoadHandler();
+
+		public event BankLoadHandler OnBankLoaded;
+
+		public void BroadcastBankLoaded()
+		{
+			if (OnBankLoaded != null)
+			{
+				OnBankLoaded();
 			}
 		}
 
@@ -432,7 +444,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		Loading,
 		Loaded,
 		LoadFailed,
-		TimedOut
+		TimedOut,
+		WaitingForPrepareEvent
 	}
 }
 #endif // AK_WWISE_ADDRESSABLES
