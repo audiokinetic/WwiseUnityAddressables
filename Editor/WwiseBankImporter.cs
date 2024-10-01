@@ -45,7 +45,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			string platform;
 			string language;
-			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language);
+			string type;
+			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language, out type);
+			bool isAutoBank = type != "User";
 
 			if (platform == null)
 			{
@@ -53,7 +55,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return;
 			}
 			
-			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language);
+			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language, type);
 
 			if (soundbankInfos == null)
 			{
@@ -61,7 +63,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return;
 			}
 
-			if (!soundbankInfos.ContainsKey(assetName))
+			if (!soundbankInfos.ContainsKey((assetName,type)))
 			{
 				Debug.LogWarning($"Skipping {ctx.assetPath} as it was not parsed in SoundbanksInfo.xml. Perhaps this bank no longer exists in the wwise project?");
 				return;
@@ -69,11 +71,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
 			dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
 			dataAsset.language = language;
-			dataAsset.isAutoBank = AkAddressablesEditorUtilities.IsAutoBank(ctx.assetPath);
-			var eventNames = soundbankInfos[assetName][language].events;
-			if (language !="SFX" && soundbankInfos[assetName].ContainsKey("SFX"))
+			dataAsset.isAutoBank = isAutoBank;
+			var eventNames = soundbankInfos[(assetName,type)][language].events;
+			if (language !="SFX" && soundbankInfos[(assetName,type)].ContainsKey("SFX"))
 			{
-				eventNames.AddRange(soundbankInfos[assetName]["SFX"].events);
+				eventNames.AddRange(soundbankInfos[(assetName,type)]["SFX"].events);
 			}
 			dataAsset.eventNames = eventNames;
 			byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);

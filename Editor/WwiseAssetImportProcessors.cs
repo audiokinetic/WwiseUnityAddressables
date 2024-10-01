@@ -121,7 +121,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					string platform;
 					string language;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+					string type;
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
+					bool isAutoBank = type != "User";
 
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 					var soundbankInfos = AkAddressablesEditorUtilities.GetPlatformSoundbanks(platform);
@@ -147,7 +149,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 							if (!string.IsNullOrEmpty(platform))
 							{
-								if (!soundbankInfos[bankName].TryGetValue(language,
+								if (!soundbankInfos[(bankName,type)].TryGetValue(language,
 									    out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
 								{
 									if (int.TryParse(language, out int result))
@@ -160,7 +162,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 								}
 
 								List<string> MediaIds = sbInfo.streamedFileIds;
-								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[bankName].Keys.ToList());
+								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[(bankName,type)].Keys.ToList());
 								bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
 								EditorUtility.SetDirty(bankAsset);
 							}
@@ -260,11 +262,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 					string platform;
 					string language;
-					AkAddressablesEditorUtilities.ParseAssetPath(bankPath, out platform, out language);
+					string type;
+					AkAddressablesEditorUtilities.ParseAssetPath(bankPath, out platform, out language, out type);
+					
+					string nonPlatformBankAssetPath = bankPath.Replace(platform, "");
+					string addressableBankAssetPath = Path.ChangeExtension(nonPlatformBankAssetPath, ".asset");	
+					string addressableBankAssetDirectory = Path.GetDirectoryName(nonPlatformBankAssetPath);
+					bool isAutoBank = type != "User";
 
 					// First find or create AddressableBank asset
 					WwiseAddressableSoundBank addressableBankAsset = null;
-					if (!addressableAssetCache.TryGetValue(name, out addressableBankAsset))
+					if (!addressableAssetCache.TryGetValue(addressableBankAssetPath, out addressableBankAsset))
 					{
 						var results = AssetDatabase.FindAssets(string.Format("{0} t:{1}", name, nameof(WwiseAddressableSoundBank)));
 						if (results.Length > 0)
@@ -272,8 +280,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							foreach (var addressableBankGuid in results)
                             {
 								string addressableBankPath = AssetDatabase.GUIDToAssetPath(addressableBankGuid);
-								var assetName = Path.GetFileNameWithoutExtension(addressableBankPath);
-								if (assetName == name)
+								if (addressableBankPath == addressableBankAssetPath)
                                 {
 									addressableBankAsset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankPath);
 								}
@@ -285,32 +292,34 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							AkAddressablesEditorUtilities.EnsureInitBankAssetCreated();
 						}
 
-						string addressableBankAssetDirectory = AkAssetUtilities.GetSoundbanksPath();
-						string addressableBankAssetPath = string.Format("{0}/{1}", addressableBankAssetDirectory, Path.ChangeExtension(name, ".asset"));
 						if (addressableBankAsset == null)
 						{
 							if (!AssetDatabase.IsValidFolder(addressableBankAssetDirectory))
 							{
 								StringBuilder currentPathBuilder = new StringBuilder();
-								var addressableBankAssetParts = addressableBankAssetDirectory.Split('/');
-
-								currentPathBuilder.Append(addressableBankAssetParts[0]);
-
-								for (int i = 1; i < addressableBankAssetParts.Length; ++i)
+								if (addressableBankAssetDirectory != null)
 								{
-									string previousPath = currentPathBuilder.ToString();
+									var addressableBankAssetParts = addressableBankAssetDirectory.Split('\\');
 
-									currentPathBuilder.AppendFormat("/{0}", addressableBankAssetParts[i]);
+									currentPathBuilder.Append(addressableBankAssetParts[0]);
 
-									string currentPath = currentPathBuilder.ToString();
-
-									if (!AssetDatabase.IsValidFolder(currentPath))
+									for (int i = 1; i < addressableBankAssetParts.Length; ++i)
 									{
-										AssetDatabase.CreateFolder(previousPath, addressableBankAssetParts[i]);
+										string previousPath = currentPathBuilder.ToString();
+
+										currentPathBuilder.AppendFormat("/{0}", addressableBankAssetParts[i]);
+
+										string currentPath = currentPathBuilder.ToString();
+
+										if (!AssetDatabase.IsValidFolder(currentPath))
+										{
+											AssetDatabase.CreateFolder(previousPath, addressableBankAssetParts[i]);
+										}
 									}
 								}
 							}
 							addressableBankAsset = ScriptableObject.CreateInstance<WwiseAddressableSoundBank>();
+							addressableBankAsset.IsAutoBank = isAutoBank;
 							itemsToCreate.Add(new CreateAssetEntry { Asset = addressableBankAsset, Path = addressableBankAssetPath, Name = name });
 						}
 						else
@@ -318,15 +327,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							UpdateAddressableBankReference(addressableBankAsset, name);
 						}
 
-						addressableAssetCache.AddOrUpdate(name, addressableBankAsset, (key, oldValue) => addressableBankAsset);
+						addressableAssetCache.AddOrUpdate(addressableBankAssetPath, addressableBankAsset, (key, oldValue) => addressableBankAsset);
 					}
 
 					if (!string.IsNullOrEmpty(platform))
 					{
-						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
-						if (soundbankInfos.ContainsKey(name))
+						var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type);
+						if (soundbankInfos.ContainsKey((name,type)))
 						{
-							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[name].Keys.ToList());
+							addressableBankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[(name,type)].Keys.ToList());
 							addressableBankAsset.AddOrUpdate(platform, language, new AssetReferenceWwiseBankData(AssetDatabase.AssetPathToGUID(bankPath)));
 
 							EditorUtility.SetDirty(addressableBankAsset);
@@ -392,7 +401,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					string platform;
 					string language;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+					string type;
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -423,7 +433,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					string platform;
 					string language;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+					string type;
+					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -468,7 +479,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				string platform;
 				string language;
-				AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language);
+				string type;
+				AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
 				AddressableMetadata assetMetadata = ScriptableObject.CreateInstance<AddressableMetadata>();
 
 				if (parseGroupNames)

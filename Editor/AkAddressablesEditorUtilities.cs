@@ -60,7 +60,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 		}
 
-		public class PlatformEntry : Dictionary<string, SoundBankEntry>
+		public class PlatformEntry : Dictionary<(string,string), SoundBankEntry>
 		{
 			public long lastParseTime;
 			public Dictionary<string, List<string>> eventToSoundBankMap = new Dictionary<string, List<string>>();
@@ -94,10 +94,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return pathContent.Contains("Event");
 		}
 
-		public static void ParseAssetPath(string assetPath, out string platform, out string language)
+		public static void ParseAssetPath(string assetPath, out string platform, out string language, out string type)
 		{
 			platform = string.Empty;
 			language = "SFX";
+			type = "User";
 
 			var banksPath = GetFullSoundbanksPath() + Path.DirectorySeparatorChar;
 			var assetsFullPath = Path.GetFullPath(assetPath);
@@ -113,6 +114,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				// Asset is stored in a sub-folder; we must identify the purpose of the sub-folder.
 				if (parts[1] == "Media" || parts[1] == "Bus" || parts[1] == "Event")
 				{
+					type = parts[1];
 					// Starting with Wwise 2022.1, loose media files are stored in a sub-directory named "Media".
 					// These themselves can be in localized sub-folders.
 					if (parts.Length > 3)
@@ -157,27 +159,28 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			SoundbanksInfo.Clear();
 		}
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
-		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict, WwiseSoundBankRef sbInfo)
+		public static void AddSoundBank(string bankName, string bankLanguage, string type, ref PlatformEntry soundBankDict, WwiseSoundBankRef sbInfo)
 		{
-			soundBankDict.TryAdd(bankName, new SoundBankEntry());
-			soundBankDict[bankName][bankLanguage] = new SoundBankInfo();
+			bool isAutoBank = !sbInfo.IsUserBank;
+			soundBankDict.TryAdd((bankName,type), new SoundBankEntry());
+			soundBankDict[(bankName,type)][bankLanguage] = new SoundBankInfo();
 			for (int i = 0; i < sbInfo.MediasCount; ++i)
 			{
-				RecordMediaFile(soundBankDict, bankName, sbInfo.Medias[i].ShortId.ToString(), sbInfo.Medias[i].Language); 
+				RecordMediaFile(soundBankDict, (bankName, type), sbInfo.Medias[i].ShortId.ToString(), sbInfo.Medias[i].Language); 
 
 			}
 			for (int i = 0; i < sbInfo.EventsCount; ++i)
 			{
-				RecordEvent(soundBankDict, bankName, sbInfo.Language, sbInfo.Events[i].Name);
+				RecordEvent(soundBankDict, (bankName,type), sbInfo.Language, sbInfo.Events[i].Name);
 			}
-			soundBankDict[bankName][sbInfo.Language].isUserBank = sbInfo.IsUserBank;
+			soundBankDict[(bankName,type)][sbInfo.Language].isUserBank = sbInfo.IsUserBank;
 		}
-		public static async Task<PlatformEntry> ExecuteUpdate(string platformName, string newBankName, string language)
+		public static async Task<PlatformEntry> ExecuteUpdate(string platformName, string newBankName, string language, string type)
 		{
 			WwiseProjectDatabase.SetCurrentPlatform(platformName);
 			WwiseProjectDatabase.SetCurrentLanguage(language);
 			
-			bool doUpdate = false;
+			bool doUpdate = true;
 			if (!SoundbanksInfo.ContainsKey(platformName))
 			{
 				SoundbanksInfo[platformName] = new PlatformEntry();
@@ -186,11 +189,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{ 
 					WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
 				}
-				doUpdate = true;
-			}
-			else if (!SoundbanksInfo[platformName].ContainsKey(newBankName) || !SoundbanksInfo[platformName][newBankName].ContainsKey(language))
-			{
-				doUpdate = true;
 			}
 			if (SoundbanksInfo.ContainsKey(platformName) && SoundbanksInfo[platformName].containsInvalidEntry)
 			{
@@ -198,23 +196,23 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			if (doUpdate)
 			{
-				await UpdatePlatformEntry(SoundbanksInfo[platformName], newBankName, platformName, language);
+				await UpdatePlatformEntry(SoundbanksInfo[platformName], newBankName, platformName, language, type);
 			}
 
 			return SoundbanksInfo[platformName];
 		}
 
-		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language)
+		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language, string type)
 		{
-			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName);
+			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName, type);
 			if (!sbInfo.IsValid)
 			{
 				WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
-				sbInfo = new WwiseSoundBankRef(newBankName);
+				sbInfo = new WwiseSoundBankRef(newBankName, type);
 			}
 			if (sbInfo.IsValid)
 			{
-				AddSoundBank(newBankName, language, ref soundBanks, sbInfo);
+				AddSoundBank(newBankName, language, type, ref soundBanks, sbInfo);
 			}
 			else
 			{
@@ -226,11 +224,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static void AddSoundBank(string bankName, string bankLanguage, ref PlatformEntry soundBankDict)
 		{
-			if (!soundBankDict.ContainsKey(bankName))
+			if (!soundBankDict.ContainsKey((bankName, "User")))
 			{
-				soundBankDict.Add(bankName, new SoundBankEntry());
+				soundBankDict.Add((bankName,"User"), new SoundBankEntry());
 			}
-			soundBankDict[bankName][bankLanguage] = new SoundBankInfo();
+			soundBankDict[(bankName,"User")][bankLanguage] = new SoundBankInfo();
 		}
 		public static PlatformEntry ExecuteParse(string platformName, string newBankName, string xmlFilename)
 		{
@@ -239,7 +237,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				doParse = true;
 			}
-			else if (SoundbanksInfo.ContainsKey(platformName) && !SoundbanksInfo[platformName].ContainsKey(newBankName))
+			else if (SoundbanksInfo.ContainsKey(platformName) && !SoundbanksInfo[platformName].ContainsKey((newBankName,"User")))
 			{
 				doParse = true;
 			}
@@ -322,7 +320,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							RecordMediaFile(
 								soundBanks,
-								bankName,
+								(bankName,"User"),
 								fileNode.Attributes["Id"].Value,
 								fileNode.Attributes["Language"].Value);
 						}
@@ -335,7 +333,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						var eventNodes = includedEventsNode.SelectNodes("Event");
 						foreach (XmlNode eventNode in eventNodes)
 						{
-							RecordEvent(soundBanks, bankName, language, eventNode.Attributes["Name"].Value);
+							RecordEvent(soundBanks, (bankName,"User"), language, eventNode.Attributes["Name"].Value);
 						}
 					}
 				}
@@ -369,7 +367,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						var eventNodes = includedEventsNode.SelectNodes("Event");
 						for (var e = 0; e < eventNodes.Count; e++)
 						{
-							RecordEvent(soundBanks, bankName, language, eventNodes[e].Attributes["Name"].Value);
+							RecordEvent(soundBanks, (bankName,"User"), language, eventNodes[e].Attributes["Name"].Value);
 
 							var streamedFilesRootNode = eventNodes[e].SelectSingleNode("ReferencedStreamedFiles");
 							if (streamedFilesRootNode != null)
@@ -381,7 +379,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 									{
 										RecordMediaFile(
 											soundBanks,
-											bankName,
+											(bankName,"User"),
 											streamedFileNodes[s].Attributes["Id"].Value,
 											streamedFileNodes[s].Attributes.GetNamedItem("Language").Value);
 									}
@@ -400,7 +398,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return SoundbanksInfo[platformName];
 		}
 		//Parse soundbank xml file to get a dict of the streaming wem files
-		public static async Task<PlatformEntry> ParsePlatformSoundbanks(string platformName, string newBankName, string language)
+		public static async Task<PlatformEntry> ParsePlatformSoundbanks(string platformName, string newBankName, string language, string type)
 		{
 			if (platformName == null)
 			{
@@ -413,7 +411,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var jsonFilename = Path.Combine(sourceFolder, "SoundbanksInfo.json");
 			if (File.Exists(jsonFilename))
 			{
-				return await ExecuteUpdate(platformName, newBankName, language);
+				return await ExecuteUpdate(platformName, newBankName, language, type);
 			}
 			if (!isJsonFileMissing && AkUtilities.IsAutoBankEnabled())
 			{
@@ -444,12 +442,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static void FindAndSetBankReference(WwiseAddressableSoundBank addressableBankAsset, string name)
 		{
-			if (!WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name))
-			{
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
+			if (addressableBankAsset.IsAutoBank)
+			{
 				WwiseEventReference.FindEventReferenceAndSetAddressableBank(addressableBankAsset, name);
-#endif
+				return;
 			}
+	#endif
+			WwiseBankReference.FindBankReferenceAndSetAddressableBank(addressableBankAsset, name);
 		}
 
 		public static void EnsureInitBankAssetCreated()
@@ -471,12 +471,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		private static void RecordEvent(PlatformEntry soundBanks, string bankName, string language, string eventName)
+		private static void RecordEvent(PlatformEntry soundBanks, (string,string) bankKey, string language, string eventName)
 		{
-			soundBanks[bankName][language].events.Add(eventName);
+			soundBanks[bankKey][language].events.Add(eventName);
 		}
 
-		private static void RecordMediaFile(PlatformEntry soundBanks, string bankName, string id, string language)
+		private static void RecordMediaFile(PlatformEntry soundBanks, (string,string) bankKey, string id, string language)
 		{
 #if !WWISE_ADDRESSABLES_24_1_OR_LATER
 			if (!soundBanks[bankName].ContainsKey(language))
@@ -485,14 +485,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 #endif
 			// Record that this bank "contains" this streamed media file
-			soundBanks[bankName][language].streamedFileIds.Add(id);
+			soundBanks[bankKey][language].streamedFileIds.Add(id);
 
 			// Record that this streamed media file is "contained" in this bank
 			if (!soundBanks.eventToSoundBankMap.ContainsKey(id))
 			{
 				soundBanks.eventToSoundBankMap[id] = new List<string>();
 			}
-			soundBanks.eventToSoundBankMap[id].Add(bankName);
+			soundBanks.eventToSoundBankMap[id].Add(bankKey.Item1);
 		}
 	}
 }

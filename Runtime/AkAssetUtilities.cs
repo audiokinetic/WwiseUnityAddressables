@@ -60,6 +60,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static WwiseAddressableSoundBank GetAddressableBankAsset(string name, bool IsLookingForAutoBank)
 		{
 			var assetPath = System.IO.Path.Combine(GetSoundbanksPath(), name + ".asset");
+			if (IsLookingForAutoBank)
+			{
+				assetPath = System.IO.Path.Combine(GetSoundbanksPath(), "Event", name + ".asset");
+			}
+			
 			var asset = AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(assetPath);
 			if (asset == null)
 			{
