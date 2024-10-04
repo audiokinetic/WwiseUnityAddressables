@@ -105,7 +105,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return true;
 		}
 
-		public static bool UpdateWwiseFileIfNecessary(string wwiseFolder, WwiseAsset asset)
+		public static bool UpdateStreamedFileIfNecessary(string wwiseFolder, WwiseAsset asset)
 		{
 			var filePath = Path.Combine(wwiseFolder, asset.GetRelativeFilePath());
 			var hashPath = filePath + ".md5";

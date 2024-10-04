@@ -409,9 +409,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 							var streamingAssetAsyncHandle = Addressables.LoadAssetsAsync<WwiseStreamingMediaAsset>(assetKeys.AsEnumerable(), streamingMedia =>
 							{
-#if UNITY_EDITOR
-								AkAssetUtilities.UpdateWwiseFileIfNecessary(WriteableMediaDirectory, streamingMedia);
-#endif
+								AkAssetUtilities.UpdateStreamedFileIfNecessary(WriteableMediaDirectory, streamingMedia);
 							}, Addressables.MergeMode.Union, false);
 
 							await streamingAssetAsyncHandle.Task;
