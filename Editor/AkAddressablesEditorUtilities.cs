@@ -479,9 +479,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		private static void RecordMediaFile(PlatformEntry soundBanks, (string,string) bankKey, string id, string language)
 		{
 #if !WWISE_ADDRESSABLES_24_1_OR_LATER
-			if (!soundBanks[bankName].ContainsKey(language))
+			if (!soundBanks[bankKey].ContainsKey(language))
 			{
-				AddSoundBank(bankName, language, ref soundBanks);
+				AddSoundBank(bankKey.Item1, language, ref soundBanks);
 			}
 #endif
 			// Record that this bank "contains" this streamed media file

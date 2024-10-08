@@ -172,13 +172,24 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public void SetLanguageAndReloadLocalizedBanks(string language, List<WwiseAddressableSoundBank> addressableBanksList)
+		public void SetLanguageAndReloadLocalizedBanks(string language, bool parseBanks = true)
 		{
-			foreach (var bank in addressableBanksList)
+			var banksToReload = new List<WwiseAddressableSoundBank>();
+			if (parseBanks)
 			{
-				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
+				foreach (var bank in m_AddressableBanks.Values)
+				{
+					if (bank.currentLanguage == "SFX" || bank.currentLanguage == language)
+						continue;
+					banksToReload.Add(bank);
+				}
+				foreach (var bank in banksToReload)
+				{
+					UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
+				}
 			}
 			UnloadInitBank();
+			m_eventsToFireOnBankLoad.Clear();
 #if WWISE_2024_OR_LATER
 			AkUnitySoundEngine.SetCurrentLanguage(language);
 			AkUnitySoundEngine.RenderAudio();
@@ -191,22 +202,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #else
 			LoadInitBank();
 #endif
-		}
-
-		public void SetLanguageAndReloadLocalizedBanks(string language)
-		{
-			var banksToReload = new List<WwiseAddressableSoundBank>();
-			foreach (var bank in m_AddressableBanks.Values)
-			{
-				if (bank.currentLanguage == "SFX" || bank.currentLanguage == language)
-					continue;
-				banksToReload.Add(bank);
-			}
-			if (banksToReload.Count == 0)
-			{
-				return;
-			}
-			SetLanguageAndReloadLocalizedBanks(language, banksToReload);
 			foreach (var bank in banksToReload)
 			{
 				LoadBank(bank, bank.decodeBank, bank.saveDecodedBank);
@@ -241,7 +236,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				m_AddressableBanks.TryAdd((bank.name, bank.isAutoBank), bank);
 			}
-
+			
 			if (bank.loadState == BankLoadState.Unloaded || bank.loadState == BankLoadState.WaitingForInitBankToLoad)
 			{
 				if (!InitBankLoaded && bank.name != "Init")

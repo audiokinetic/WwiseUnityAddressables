@@ -128,7 +128,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 					var soundbankInfos = AkAddressablesEditorUtilities.GetPlatformSoundbanks(platform);
 #else
-					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language);
+					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type);
 #endif
 
 					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
@@ -265,9 +265,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string type;
 					AkAddressablesEditorUtilities.ParseAssetPath(bankPath, out platform, out language, out type);
 					
-					string nonPlatformBankAssetPath = bankPath.Replace(platform, "");
-					string addressableBankAssetPath = Path.ChangeExtension(nonPlatformBankAssetPath, ".asset");	
-					string addressableBankAssetDirectory = Path.GetDirectoryName(nonPlatformBankAssetPath);
+					string noPlatformAndLanguageBankAssetPath = bankPath.Replace(platform + "/", "");
+					noPlatformAndLanguageBankAssetPath = noPlatformAndLanguageBankAssetPath.Replace(language + "/", "");
+					string addressableBankAssetPath = Path.ChangeExtension(noPlatformAndLanguageBankAssetPath, ".asset");	
+					string addressableBankAssetDirectory = Path.GetDirectoryName(noPlatformAndLanguageBankAssetPath);
 					bool isAutoBank = type != "User";
 
 					// First find or create AddressableBank asset
