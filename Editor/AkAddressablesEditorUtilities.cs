@@ -166,6 +166,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			soundBankDict[(bankName,type)][bankLanguage] = new SoundBankInfo();
 			for (int i = 0; i < sbInfo.MediasCount; ++i)
 			{
+				if (!soundBankDict[(bankName, type)].ContainsKey(sbInfo.Medias[i].Language))
+				{
+					soundBankDict[(bankName,type)][sbInfo.Medias[i].Language] = new SoundBankInfo();
+				}
 				RecordMediaFile(soundBankDict, (bankName, type), sbInfo.Medias[i].ShortId.ToString(), sbInfo.Medias[i].Language); 
 
 			}
