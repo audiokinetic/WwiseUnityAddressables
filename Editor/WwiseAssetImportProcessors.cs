@@ -69,6 +69,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
 		{
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
 			UpdateAssetReferences(importedAssets);
 			RemoveAssetReferences(deletedAssets);
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
