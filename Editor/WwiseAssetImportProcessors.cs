@@ -133,14 +133,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type);
 #endif
 
-					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankNames))
+					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankInfos))
 					{
-						foreach (var bankName in bankNames)
+						foreach (var bankInfo in bankInfos)
 						{
+							string bankName = bankInfo.Item1;
+							string bankType = bankInfo.Item2;
+							string bankAssetPath = bankType == "User" ? "" : bankType+"/";
+							bankAssetPath += bankName;
 							string bankAssetDir = Path.GetDirectoryName(assetPath);
 							string addressableBankAssetDir = AkAssetUtilities.GetSoundbanksPath();
 							string addressableBankAssetPath =
-								System.IO.Path.Combine(addressableBankAssetDir, bankName + ".asset");
+								System.IO.Path.Combine(addressableBankAssetDir, bankAssetPath + ".asset");
 							var bankAsset =
 								AssetDatabase.LoadAssetAtPath<WwiseAddressableSoundBank>(addressableBankAssetPath);
 
@@ -151,7 +155,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 							if (!string.IsNullOrEmpty(platform))
 							{
-								if (!soundbankInfos[(bankName,type)].TryGetValue(language,
+								if (!soundbankInfos[(bankName,bankType)].TryGetValue(language,
 									    out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
 								{
 									if (int.TryParse(language, out int result))
@@ -164,7 +168,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 								}
 
 								List<string> MediaIds = sbInfo.streamedFileIds;
-								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[(bankName,type)].Keys.ToList());
+								bankAsset.UpdateLocalizationLanguages(platform, soundbankInfos[(bankName,bankType)].Keys.ToList());
 								bankAsset.SetStreamingMedia(platform, language, bankAssetDir, MediaIds);
 								EditorUtility.SetDirty(bankAsset);
 							}
