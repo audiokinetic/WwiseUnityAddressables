@@ -63,7 +63,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public class PlatformEntry : Dictionary<(string,string), SoundBankEntry>
 		{
 			public long lastParseTime;
-			public Dictionary<string, List<string>> eventToSoundBankMap = new Dictionary<string, List<string>>();
+			public Dictionary<string, List<(string,string)>> eventToSoundBankMap = new Dictionary<string, List<(string,string)>>();
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			public bool containsInvalidEntry = false;
 
@@ -494,9 +494,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			// Record that this streamed media file is "contained" in this bank
 			if (!soundBanks.eventToSoundBankMap.ContainsKey(id))
 			{
-				soundBanks.eventToSoundBankMap[id] = new List<string>();
+				soundBanks.eventToSoundBankMap[id] = new List<(string,string)>();
 			}
-			soundBanks.eventToSoundBankMap[id].Add(bankKey.Item1);
+			soundBanks.eventToSoundBankMap[id].Add(bankKey);
 		}
 	}
 }
