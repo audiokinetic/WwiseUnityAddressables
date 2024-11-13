@@ -97,8 +97,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			get
 			{
-				string pdp = UnityEngine.Application.persistentDataPath;
-				return WwiseMajorVersion >= 2022 ? Path.Combine(pdp, "Media") : pdp;
+				return Path.Combine(UnityEngine.Application.persistentDataPath, "Media");
 			}
 		}
 
@@ -151,7 +150,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				m_AddressableBanks.Clear();
 			}
-
 		}
 
 		public void ReloadAllBanks()
