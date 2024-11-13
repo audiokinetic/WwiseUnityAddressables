@@ -29,9 +29,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_Instance == null)
 				{
-#if WWISE_ADDRESSABLES_POST_2023
+#if WWISE_ADDRESSABLES_POST_2023 || WWISE_ADDRESSABLES_23_1_OR_LATER
+#if WWISE_2024_OR_LATER
+					AkUnityAddressablesSoundEngineInitialization.ResetInstance();
+#else
 					AkAddressablesSoundEngineInitialization.ResetInstance();
-#endif
+#endif //WWISE_2024_OR_LATER
+#endif //WWISE_ADDRESSABLES_POST_2023 || WWISE_ADDRESSABLES_23_1_OR_LATER
 #if UNITY_EDITOR
 					var name = typeof(AkWwiseInitializationSettings).Name;
 					var className = typeof(AkWwiseAddressablesInitializationSettings).Name;
@@ -46,7 +50,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-#if !WWISE_ADDRESSABLES_POST_2023 && !WWISE_ADDRESSABLES_23_1_OR_LATER
+#if !(WWISE_ADDRESSABLES_POST_2023 || WWISE_ADDRESSABLES_23_1_OR_LATER)
 		protected override void LoadInitBank()
 		{
 			AkAddressableBankManager.Instance.LoadInitBank();

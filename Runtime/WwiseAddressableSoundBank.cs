@@ -59,11 +59,46 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		[System.NonSerialized]
 		internal int refCount;
-
+		
+		[System.NonSerialized]
+		internal bool isAutoBank;
+		
+		[System.NonSerialized]
+		internal uint bankType;		
+		
 #if UNITY_EDITOR
 		public delegate string GetWwisePlatformNameDelegate(BuildTarget target);
 		public static GetWwisePlatformNameDelegate GetWwisePlatformNameFromBuildTarget;
 #endif
+
+		public uint SoundbankId
+		{
+			get { return soundbankId; }
+		}
+
+		public BankLoadState LoadState
+
+		{
+			get { return loadState; }
+		}
+
+		public bool IsAutoBank
+		{
+			get { return isAutoBank; }
+			set
+			{
+				isAutoBank = value;
+			}
+		}
+
+		public string CurrentLanguage
+		{
+			get { return currentLanguage; }
+			set
+			{
+				currentLanguage = value;
+			}
+		}
 
 		public Dictionary<string, AssetReferenceWwiseBankData> Data
 		{
@@ -88,6 +123,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #else
 				return currentPlatformAssets.LocalizedStreamingMedia;
 #endif
+			}
+		}
+		
+		public delegate void BankLoadHandler();
+
+		public event BankLoadHandler OnBankLoaded;
+
+		public void BroadcastBankLoaded()
+		{
+			if (OnBankLoaded != null)
+			{
+				OnBankLoaded();
 			}
 		}
 
@@ -396,7 +443,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		WaitingForInitBankToLoad,
 		Loading,
 		Loaded,
-		LoadFailed
+		LoadFailed,
+		TimedOut,
+		WaitingForPrepareEvent
 	}
 }
 #endif // AK_WWISE_ADDRESSABLES

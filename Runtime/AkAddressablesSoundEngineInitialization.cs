@@ -19,23 +19,40 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-#if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES && WWISE_ADDRESSABLES_POST_2023
-
+#if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES && (WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023)
+#if WWISE_2024_OR_LATER
+public class AkUnityAddressablesSoundEngineInitialization : AkUnitySoundEngineInitialization
+#else
 public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitialization
+#endif
 {
 	public static void ResetInstance()
 	{
 		if(m_Instance != null)
 		{
 			InitializationDelegate copyInitialize = m_Instance.initializationDelegate;
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			ReInitializationDelegate copyReInitialize = m_Instance.reInitializationDelegate;
+#endif
 			TerminationDelegate copyTerminate = m_Instance.terminationDelegate;
+#if WWISE_2024_OR_LATER
+			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
+#else
 			m_Instance = new AkAddressablesSoundEngineInitialization();
+#endif
 			m_Instance.initializationDelegate = copyInitialize;
+#if WWISE_ADDRESSABLES_24_1_OR_LATER
+			m_Instance.reInitializationDelegate = copyReInitialize;
+#endif
 			m_Instance.terminationDelegate = copyTerminate;
 		}
 		else
 		{
+#if WWISE_2024_OR_LATER
+			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
+#else
 			m_Instance = new AkAddressablesSoundEngineInitialization();
+#endif
 		}
 	}
 
