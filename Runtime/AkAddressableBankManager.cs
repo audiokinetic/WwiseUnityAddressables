@@ -364,7 +364,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						bank.loadState = BankLoadState.WaitingForPrepareEvent;
 					}
 				}
-				else if(result != AKRESULT.AK_BankAlreadyLoaded)
+				else if (result == AKRESULT.AK_BankAlreadyLoaded)
+				{
+					bank.loadState = BankLoadState.Loaded;
+				}
+				else 
 				{
 					bank.soundbankId = INVALID_SOUND_BANK_ID;
 					bank.loadState = BankLoadState.LoadFailed;
