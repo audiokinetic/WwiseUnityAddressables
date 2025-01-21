@@ -38,20 +38,33 @@ namespace AK.Wwise.Unity.WwiseAddressables
 {
 	public class AkAddressableBankManager
 	{
-
-		private ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> m_AddressableBanks =
+		public static ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> m_AddressableBanks =
 			new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>();
 
-		private ConcurrentDictionary<string, string> m_banksToUnload =
+		public static ConcurrentDictionary<string, string> m_BanksToUnload =
 			new ConcurrentDictionary<string, string>();
 
-		private ConcurrentDictionary<uint, EventContainer> m_eventsToFireOnBankLoad =
+		private static ConcurrentDictionary<uint, EventContainer> m_EventsToFireOnBankLoad =
 			new ConcurrentDictionary<uint, EventContainer>();
+		
+		private static ConcurrentDictionary<string, BankHandle>  m_BankHandles =
+			new ConcurrentDictionary<string, BankHandle>();
 
+		public static ConcurrentDictionary<string, BankHandle> BankHandles
+		{
+			get
+			{
+				return m_BankHandles;
+			}
+		}
+
+		private static readonly System.Collections.Generic.List<BankHandle> m_BanksToUnloadHandle =
+			new System.Collections.Generic.List<BankHandle>();
+		
 		public const uint INVALID_SOUND_BANK_ID = 0;
 
-		private WwiseAddressableSoundBank initBank;
-		private WwiseAddressableSoundBank InitBank
+		private static WwiseAddressableSoundBank initBank;
+		public static WwiseAddressableSoundBank InitBank
 		{
 			get
 			{
@@ -74,6 +87,129 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return instance;
 			}
 			private set { Instance = value; }
+		}
+		
+		public struct BankHandle
+		{
+			public WwiseAddressableSoundBank Bank;
+			public bool IgnoreRefCount;
+			public bool RemoveFromBankDictionary;
+			public int RefCount;
+
+			public BankHandle(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = false)
+			{
+				Bank = bank;
+				IgnoreRefCount = ignoreRefCount;
+				RemoveFromBankDictionary = removeFromBankDictionary;
+				RefCount = 0;
+			}
+
+			public void IncRef()
+			{
+				if (RefCount == 0)
+				{
+					m_BanksToUnloadHandle.Remove(this);
+				}
+				RefCount++;
+			}
+			
+			public void DecRef(bool ignoreRefCount)
+			{
+				if (RefCount == 0)
+				{
+					return;
+				}
+
+				if (ignoreRefCount)
+				{
+					RefCount = 0;
+				}
+				else
+				{
+					RefCount--;
+				}
+
+				if (RefCount == 0)
+				{
+					m_BanksToUnloadHandle.Add(this);
+				}
+			}
+			
+			public void UnloadBank()
+			{
+				if (!IgnoreRefCount)
+				{
+					Bank.refCount = Math.Max(0, Bank.refCount - 1);
+					if (Bank.refCount != 0)
+					{
+						return;
+					}
+				}
+
+				if (Bank.loadState == BankLoadState.Loading || Bank.loadState == BankLoadState.WaitingForPrepareEvent)
+				{
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {Bank.name} will be unloaded after it is done loading");
+					m_BanksToUnload.TryAdd(Bank.name, Bank.name);
+					return;
+				}
+
+				if (Bank.loadState == BankLoadState.Unloaded)
+				{
+#if WWISE_2024_OR_LATER
+					AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
+#else
+				AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
+#endif
+					UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {Bank.name} is already unloaded.");
+					return;
+				}
+
+				if (Bank.loadState == BankLoadState.Loaded || Bank.loadState == BankLoadState.TimedOut)
+				{
+					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {Bank.name} sound Bank - Bank ID : {Bank.soundbankId}");
+					if (Bank.bankType != 0)
+					{
+#if WWISE_2024_OR_LATER
+						AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
+						AkUnitySoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero, Bank.bankType);
+#else
+						AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
+						AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
+#endif
+					}
+					else
+					{
+#if WWISE_2024_OR_LATER
+						AkUnitySoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero);
+#else
+						AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
+#endif
+					}
+				}
+
+				m_BanksToUnload.TryRemove(Bank.name, out _);
+				Bank.soundbankId = 0;
+				Bank.refCount = 0;
+				Bank.loadState = BankLoadState.Unloaded;
+
+				if (RemoveFromBankDictionary)
+				{
+					if (!m_AddressableBanks.TryRemove((Bank.name, Bank.isAutoBank), out _))
+					{
+#if UNITY_EDITOR
+						// Don't unnecessarily log messages when caused by domain reload
+						if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && !UnityEditor.EditorApplication.isPlaying)
+						{
+							return;
+						}
+#endif
+						if (InitBank && Bank.name != InitBank.name)
+						{
+							UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Unloaded {Bank.name}, but it was not in the list of loaded banks");
+						}
+					}
+				}
+			}
 		}
 		
 		private uint? m_wwiseMajorVersion = null;
@@ -188,8 +324,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: true);
 				}
 			}
+			DoUnloadBank();
 			UnloadInitBank();
-			m_eventsToFireOnBankLoad.Clear();
+			m_EventsToFireOnBankLoad.Clear();
 #if WWISE_2024_OR_LATER
 			AkUnitySoundEngine.SetCurrentLanguage(language);
 			AkUnitySoundEngine.RenderAudio();
@@ -220,7 +357,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (InitBank != null)
 			{
-				UnloadBank(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
+				BankHandle initBankHandle = new BankHandle(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
+				initBankHandle.UnloadBank();
+				m_BankHandles.TryRemove(InitBank.name, out var outHandle);
 			}
 		}
 		//Todo : support decoding banks and saving decoded banks
@@ -254,7 +393,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (bank.loadState == BankLoadState.Loaded)
 			{
-				bank.refCount += 1;
+				m_BankHandles.TryGetValue(bank.name, out var handle);
+				handle.IncRef();
+				m_BankHandles.AddOrUpdate(
+					bank.name, 
+					key => new BankHandle(bank), // Add new instance if key does not exist
+					(key, existingValue) => 
+					{ 
+						existingValue.IncRef(); 
+						return existingValue; // Update the existing instance
+                    }
+				);
 				return;
 			}
 
@@ -352,6 +501,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #endif
 				if (result == AKRESULT.AK_Success)
 				{
+					if (m_BankHandles.TryGetValue(bank.name, out var handle))
+					{
+						// Bank already loaded, increment its ref count.
+						handle.IncRef();
+						return;
+					}
+					handle = new BankHandle(bank, false, false);
+					handle.IncRef();
+					m_BankHandles.TryAdd(bank.name, handle);
 					bank.soundbankId = bankID;
 					bank.bankType = bankType;
 					//Auto bank will set itself as loaded later
@@ -439,79 +597,28 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				Addressables.Release(asyncHandle);
 			}
 		}
-		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = true)
+
+		public void DoUnloadBank()
 		{
-			if (!ignoreRefCount)
+			foreach (var bankToUnload in m_BanksToUnloadHandle)
 			{
-				bank.refCount = Math.Max(0, bank.refCount - 1);
-				if (bank.refCount != 0)
-				{
-					return;
-				}
+				bankToUnload.UnloadBank();
+				m_BankHandles.TryRemove(bankToUnload.Bank.name, out var outHandle);
 			}
-
-			if (bank.loadState == BankLoadState.Loading || bank.loadState == BankLoadState.WaitingForPrepareEvent)
+			
+			m_BanksToUnloadHandle.Clear();
+		}
+		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = true, bool removeFromBankDictionary = true)
+		{
+			if (m_BankHandles.TryGetValue(bank.name, out var handle))
 			{
-				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} will be unloaded after it is done loading");
-				m_banksToUnload.TryAdd(bank.name, bank.name);
-				return;
-			}
-
-			if(bank.loadState == BankLoadState.Unloaded)
-			{
-#if WWISE_2024_OR_LATER
-				AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-#else
-				AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-#endif
-				UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {bank.name} is already unloaded.");
-				return;
-			}
-
-			if (bank.loadState == BankLoadState.Loaded || bank.loadState == BankLoadState.TimedOut)
-			{
-				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {bank.name} sound bank - Bank ID : {bank.soundbankId}");
-				if (bank.bankType != 0)
+				var handleOriginal = handle;
+				handle.DecRef(ignoreRefCount);
+				if (!handle.RemoveFromBankDictionary)
 				{
-#if WWISE_2024_OR_LATER
-					AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-					AkUnitySoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
-#else
-					AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
-#endif
+					handle.RemoveFromBankDictionary = removeFromBankDictionary;
 				}
-				else
-				{
-#if WWISE_2024_OR_LATER
-					AkUnitySoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
-#else
-					AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
-#endif
-				}
-			}
-
-			m_banksToUnload.TryRemove(bank.name, out _);
-			bank.soundbankId = 0;
-			bank.refCount = 0;
-			bank.loadState = BankLoadState.Unloaded;
-
-			if (removeFromBankDictionary)
-			{
-				if (!m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _))
-				{
-#if UNITY_EDITOR
-					// Don't unnecessarily log messages when caused by domain reload
-					if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && !UnityEditor.EditorApplication.isPlaying)
-					{
-						return;
-					}
-#endif
-					if (InitBank && bank.name != InitBank.name)
-					{
-						UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Unloaded {bank.name}, but it was not in the list of loaded banks");
-					}
-				}
+				m_BankHandles.TryUpdate(bank.name, handle, handleOriginal);
 			}
 		}
 
@@ -525,8 +632,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
+			if (methodName == "ExecuteAction")
+			{
+				UnityEngine.Debug.LogWarning($"Wwise Addressables : Trying to execute action on {eventName} but it's soundbank hasn't loaded. Aborting.");
+				return false;
+			}
+
 			UnityEngine.Debug.LogWarning($"Wwise Addressables : {eventName} will be delayed, because its soundbank has not been loaded.");
-			m_eventsToFireOnBankLoad.TryAdd(eventId, new EventContainer { eventName = eventName, eventObject = eventObject, methodName = methodName, methodArgTypes = methodArgTypes, methodArgs = methodArgs });
+			m_EventsToFireOnBankLoad.TryAdd(eventId, new EventContainer { eventName = eventName, eventObject = eventObject, methodName = methodName, methodArgTypes = methodArgTypes, methodArgs = methodArgs });
 			return false;
 		}
 
@@ -555,7 +668,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			//Fire any events that were waiting on the bank load
 			var eventsToRemove = new List<uint>();
-			foreach (var e in m_eventsToFireOnBankLoad)
+			foreach (var e in m_EventsToFireOnBankLoad)
 			{
 				if (bank.eventNames.Contains(e.Value.eventName))
 				{
@@ -569,9 +682,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
+
 			foreach (var e in eventsToRemove)
 			{
-				m_eventsToFireOnBankLoad.TryRemove(e, out _);
+				m_EventsToFireOnBankLoad.TryRemove(e, out _);
 			}
 		}
 
@@ -605,7 +719,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnloadBank(bank, ignoreRefCount : true);
 			}
 			
-			if (m_banksToUnload.Keys.Contains(bank.name))
+			if (m_BanksToUnload.Keys.Contains(bank.name))
 			{
 				UnloadBank(bank);
 			}
