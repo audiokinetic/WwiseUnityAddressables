@@ -89,9 +89,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			private set { Instance = value; }
 		}
 		
-		public struct BankHandle
+		public struct BankHandle : IEquatable<BankHandle>
 		{
 			public WwiseAddressableSoundBank Bank;
+			public uint SoundBankId;
 			public bool IgnoreRefCount;
 			public bool RemoveFromBankDictionary;
 			public int RefCount;
@@ -99,6 +100,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			public BankHandle(WwiseAddressableSoundBank bank, bool ignoreRefCount = false, bool removeFromBankDictionary = false)
 			{
 				Bank = bank;
+				SoundBankId = bank.SoundbankId;
 				IgnoreRefCount = ignoreRefCount;
 				RemoveFromBankDictionary = removeFromBankDictionary;
 				RefCount = 0;
@@ -209,6 +211,21 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						}
 					}
 				}
+			}
+
+			public bool Equals(BankHandle other)
+			{
+				return SoundBankId == other.SoundBankId;
+			}
+
+			public override bool Equals(object obj)
+			{
+				return obj is BankHandle other && Equals(other);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)SoundBankId;
 			}
 		}
 		
