@@ -35,12 +35,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static string GetSoundbanksPath()
 		{
-			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
+			if (AkWwiseEditorSettings.Instance.RootOutputPath == null)
 			{
 				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
-			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
+			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.RootOutputPath);
 			return path.Replace("\\", "/");
 		}
 
