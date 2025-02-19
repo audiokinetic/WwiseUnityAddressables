@@ -35,12 +35,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static string GetSoundbanksPath()
 		{
-			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
+			if (AkWwiseEditorSettings.Instance.RootOutputPath == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
+				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the RootOutputPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
-			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
+			var fullRootOutputPath = AkUtilities.GetFullPath(UnityEngine.Application.dataPath, AkWwiseEditorSettings.Instance.RootOutputPath);
+			var streamingAssetPath = UnityEngine.Application.dataPath.Replace(System.IO.Path.AltDirectorySeparatorChar, System.IO.Path.DirectorySeparatorChar);
+			streamingAssetPath = System.IO.Path.Combine(streamingAssetPath, "StreamingAssets");
+			if (fullRootOutputPath.Contains(streamingAssetPath))
+			{
+				UnityEngine.Debug.LogWarning("Wwise Addressables: The RootOutputPath in the Wwise Editor settings is setting within the StreamingAssets folder. It is recommended to not set it in this folder.");
+			}
+			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.RootOutputPath);
 			return path.Replace("\\", "/");
 		}
 

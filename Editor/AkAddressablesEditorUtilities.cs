@@ -133,23 +133,23 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public static string GetSoundbanksPath()
 		{
-			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
+			if (AkWwiseEditorSettings.Instance.RootOutputPath == null)
 			{
 				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
-			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
+			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.RootOutputPath);
 			return path.Replace("\\", "/");
 		}
 
 		private static string GetFullSoundbanksPath()
 		{
-			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
+			if (AkWwiseEditorSettings.Instance.RootOutputPath == null)
 			{
 				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
-			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
+			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.RootOutputPath);
 			return Path.GetFullPath(path);
 		}
 
@@ -191,7 +191,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{ 
-					WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+					WwiseProjectDatabase.Init(AkUtilities.GetRootOutputPath(), platformName, language);
 				}
 			}
 			if (SoundbanksInfo.ContainsKey(platformName) && SoundbanksInfo[platformName].containsInvalidEntry)
@@ -211,7 +211,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName, type);
 			if (!sbInfo.IsValid)
 			{
-				WwiseProjectDatabase.Init(AkBasePathGetter.GetWwiseRootOutputPath(), platformName, language);
+				WwiseProjectDatabase.Init(AkUtilities.GetRootOutputPath(), platformName, language);
 				sbInfo = new WwiseSoundBankRef(newBankName, type);
 			}
 			if (sbInfo.IsValid)
@@ -409,7 +409,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				platformName = AkBasePathGetter.GetPlatformName();
 			}
 
-			var sourceFolder = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName);
+			var sourceFolder = Path.Combine("Assets", AkWwiseEditorSettings.Instance.RootOutputPath, platformName);
 			
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			var jsonFilename = Path.Combine(sourceFolder, "SoundbanksInfo.json");
@@ -427,7 +427,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
 			if (!File.Exists(xmlFilename))
 			{
-				Debug.LogWarning($"Could not find SoundbanksInfo.xml at {Path.Combine(AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName)}. Check the Generated Soundbanks Path in the Unity Wwise project settings. Using the Wwise Project to find SoundbanksInfo.xml.");
+				Debug.LogWarning($"Could not find SoundbanksInfo.xml at {Path.Combine(AkWwiseEditorSettings.Instance.RootOutputPath, platformName)}. Check the Generated Soundbanks Path in the Unity Wwise project settings. Using the Wwise Project to find SoundbanksInfo.xml.");
 				if (!AkBasePathGetter.GetSoundBankPaths(platformName, out sourceFolder, out string destinationFolder))
 				{
 					Debug.LogError($"Failed to import {newBankName}. Could not get SoundBank folder for {platformName} from Wwise Project {AkWwiseEditorSettings.Instance.WwiseProjectPath}.");
