@@ -574,7 +574,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					if (assetKeys.Count > 0)
 					{
 #if UNITY_EDITOR
-						if ((EditorSettings.enterPlayModeOptions & EnterPlayModeOptions.DisableDomainReload) != 0 || EditorApplication.isPlaying)
+						if ((EditorSettings.enterPlayModeOptionsEnabled && (EditorSettings.enterPlayModeOptions & EnterPlayModeOptions.DisableDomainReload) != 0) || EditorApplication.isPlaying)
 						{
 							var startingSceneName = SceneManager.GetActiveScene().name;
 #endif
