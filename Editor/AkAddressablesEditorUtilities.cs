@@ -421,7 +421,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				WwiseProjectDatabase.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
 				isJsonFileMissing = true;
-				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
+				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml." +
+				                 $"Using the SoundbanksInfo.xml is not the recommended option and it involves a manual support for auto-defined Soundbanks." +
+				                 $"To benefit from an automatic support of auto-defined Soundbanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 			}
 #endif
 			var xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
