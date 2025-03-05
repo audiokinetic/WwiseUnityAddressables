@@ -37,9 +37,18 @@ public class SceneUpdater
     {
         hierarchyChanged = true;
     }
+
+    public static bool SceneIsInPackage(string scenePath)
+    {
+        if (string.IsNullOrEmpty(scenePath))
+            return false;
+
+        return scenePath.StartsWith("Packages/");
+    }
     
     private static List<string> scenePaths;
     private static int currentSceneIndex = 0;
+    private static bool lastSceneWasInPackage = false;
     
     private static void ReloadNextScene()
     {
@@ -51,30 +60,34 @@ public class SceneUpdater
         if (currentSceneIndex < scenePaths.Count)
         {
             string scenePath = scenePaths[currentSceneIndex];
-            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
-            hierarchyChanged = false;
+            if (SceneIsInPackage(scenePath))
+            {
+                lastSceneWasInPackage = true;
+            }
+            else
+            {
+                Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                lastSceneWasInPackage = false;
+                hierarchyChanged = false;
+            }
         }
         else
         {
             EditorApplication.hierarchyChanged -= OnHierarchyChanged;
             EditorApplication.update -= Update;
-            if (UnityEditorInternal.InternalEditorUtility.inBatchMode)
-            {
-                EditorApplication.Exit(0);
-            }
-            else
-            {
-                EditorUtility.DisplayDialog("Reload All Scenes", "All scenes have been reloaded.", "OK");
-            }
+            EditorUtility.DisplayDialog("Reload All Scenes", "All scenes have been reloaded.", "OK");
         }
     }
     
     private static void Update()
     {
-        if (hierarchyChanged)
+        if (hierarchyChanged || lastSceneWasInPackage)
         {
-            Scene scene = SceneManager.GetActiveScene();
-            EditorSceneManager.SaveScene(scene);
+            if (hierarchyChanged)
+            {
+                Scene scene = SceneManager.GetActiveScene();
+                EditorSceneManager.SaveScene(scene);
+            }
             currentSceneIndex++;
             ReloadNextScene();
         }
