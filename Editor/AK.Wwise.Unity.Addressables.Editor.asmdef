@@ -21,7 +21,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [ "!UNITY_SERVER" ],
+    "defineConstraints": [
+        "!UNITY_SERVER"
+    ],
     "versionDefines": [
         {
             "name": "com.unity.addressables",
@@ -32,6 +34,16 @@
             "name": "com.audiokinetic.wwise.addressables",
             "expression": "1.0.0",
             "define": "AK_WWISE_ADDRESSABLES"
+        },
+        {
+            "name": "com.audiokinetic.wwise.addressables",
+            "expression": "2023.1.0",
+            "define": "WWISE_ADDRESSABLES_23_1_OR_LATER"
+        },
+        {
+            "name": "com.audiokinetic.wwise.addressables",
+            "expression": "2024.1.0",
+            "define": "WWISE_ADDRESSABLES_24_1_OR_LATER"
         }
     ],
     "noEngineReferences": false
