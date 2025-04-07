@@ -75,7 +75,14 @@ public class SceneUpdater
         {
             EditorApplication.hierarchyChanged -= OnHierarchyChanged;
             EditorApplication.update -= Update;
-            EditorUtility.DisplayDialog("Reload All Scenes", "All scenes have been reloaded.", "OK");
+            if (UnityEditorInternal.InternalEditorUtility.inBatchMode)
+            {
+                EditorApplication.Exit(0);
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Reload All Scenes", "All scenes have been reloaded.", "OK");
+            }
         }
     }
     
