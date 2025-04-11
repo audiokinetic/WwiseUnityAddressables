@@ -83,14 +83,19 @@ public class SceneUpdater
     {
         if (hierarchyChanged || lastSceneWasInPackage)
         {
+            if (UnityEditorInternal.InternalEditorUtility.inBatchMode)
+            {
+                AkWwisePostImportCallbackSetup.CheckWwiseGlobalExistance();
+            }
+
             if (hierarchyChanged)
             {
                 Scene scene = SceneManager.GetActiveScene();
                 EditorSceneManager.SaveScene(scene);
             }
-            currentSceneIndex++;
-            ReloadNextScene();
         }
+        currentSceneIndex++;
+        ReloadNextScene();
     }
 }
 #endif
