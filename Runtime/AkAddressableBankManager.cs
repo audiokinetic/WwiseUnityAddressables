@@ -173,8 +173,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						AkUnitySoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
 						AkUnitySoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero, Bank.bankType);
 #else
-						AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { bank.name }, 1);
-						AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero, bank.bankType);
+						AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
+						AkSoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero, Bank.bankType);
 #endif
 					}
 					else
@@ -182,7 +182,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if WWISE_2024_OR_LATER
 						AkUnitySoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero);
 #else
-						AkSoundEngine.UnloadBank(bank.soundbankId, System.IntPtr.Zero);
+						AkSoundEngine.UnloadBank(Bank.soundbankId, System.IntPtr.Zero);
 #endif
 					}
 				}
