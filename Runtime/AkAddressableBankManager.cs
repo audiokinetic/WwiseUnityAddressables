@@ -321,7 +321,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if UNITY_WEBGL && !UNITY_EDITOR
 			// On WebGL, we MUST load asynchronously in order to yield back to the browser.
 			// Failing to do so will result in the thread blocking forever and the asset will never be loaded.
-			soundBankAsset = await asyncHandle.Task;
+			soundBankAsset = (WwiseSoundBankAsset)await asyncHandle.Task;
 #else
 			if (loadAsync)
 			{
