@@ -30,11 +30,11 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 	{
 		if(m_Instance != null)
 		{
-			InitializationDelegate copyInitialize = m_Instance.initializationDelegate;
+			System.Action copyInitialize = m_Instance.initializationDelegate;
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
-			ReInitializationDelegate copyReInitialize = m_Instance.reInitializationDelegate;
+			System.Action copyReInitialize = m_Instance.reInitializationDelegate;
 #endif
-			TerminationDelegate copyTerminate = m_Instance.terminationDelegate;
+			System.Action copyTerminate = m_Instance.terminationDelegate;
 #if WWISE_2024_OR_LATER
 			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
 #else
