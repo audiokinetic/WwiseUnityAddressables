@@ -92,10 +92,6 @@ public class SceneUpdater
         {
             if (hierarchyChanged)
             {
-                if (UnityEditorInternal.InternalEditorUtility.inBatchMode)
-                {
-                    AkWwisePostImportCallbackSetup.CheckWwiseGlobalExistance();
-                }
                 Scene scene = SceneManager.GetActiveScene();
                 EditorSceneManager.SaveScene(scene);
             }

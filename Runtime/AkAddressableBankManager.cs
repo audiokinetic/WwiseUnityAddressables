@@ -408,11 +408,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (bank.loadState == BankLoadState.Loaded)
 			{
-				bool handleFound = m_BankHandles.TryGetValue(bank.name, out var handle);
-				if (!handleFound)
-				{
-					return;
-				}
+				m_BankHandles.TryGetValue(bank.name, out var handle);
 				handle.IncRef();
 				m_BankHandles.AddOrUpdate(
 					bank.name, 
@@ -461,7 +457,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
 					m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _);
 					bank.loadState = BankLoadState.Unloaded;
-					bank.refCount -= 1;
 					return;
 				}
 			}

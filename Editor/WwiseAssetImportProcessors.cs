@@ -306,7 +306,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 								StringBuilder currentPathBuilder = new StringBuilder();
 								if (addressableBankAssetDirectory != null)
 								{
-									var addressableBankAssetParts = addressableBankAssetDirectory.Split(Path.DirectorySeparatorChar);
+									var addressableBankAssetParts = addressableBankAssetDirectory.Split('\\');
 
 									currentPathBuilder.Append(addressableBankAssetParts[0]);
 
