@@ -259,19 +259,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
 			if (foundBank.Count() == 0)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables : There is no InitBankHolder in the scene, please add one for Wwise to function properly.");
+				UnityEngine.Debug.LogError("Wwise Addressables: There is no InitBankHolder in the scene, please add one for Wwise to function properly.");
 				return null;
 			}
 
 			if (foundBank.Count() > 1)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables : There is more than one InitBankHolder in the scene, which is not recommended.");
+				UnityEngine.Debug.LogError("Wwise Addressables: There is more than one InitBankHolder in the scene, which is not recommended.");
 			}
 
 			WwiseAddressableSoundBank InitBank = foundBank[0].GetAddressableInitBank();
 			if (InitBank == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables : The InitBankHolder could not get a valid reference to the Init bank.");
+				UnityEngine.Debug.LogError("Wwise Addressables: The InitBankHolder could not get a valid reference to the Init bank.");
 				return null;
 
 			}
@@ -654,11 +654,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (methodName == "ExecuteAction")
 			{
-				UnityEngine.Debug.LogWarning($"Wwise Addressables : Trying to execute action on {eventName} but it's soundbank hasn't loaded. Aborting.");
+				UnityEngine.Debug.LogWarning($"Wwise Addressables: Trying to execute action on {eventName} but its soundbank hasn't loaded. Aborting.");
 				return false;
 			}
 
-			UnityEngine.Debug.LogWarning($"Wwise Addressables : {eventName} will be delayed, because its soundbank has not been loaded.");
+			UnityEngine.Debug.LogWarning($"Wwise Addressables: {eventName} will be delayed, because its soundbank has not been loaded.");
 			m_EventsToFireOnBankLoad.TryAdd(eventId, new EventContainer { eventName = eventName, eventObject = eventObject, methodName = methodName, methodArgTypes = methodArgTypes, methodArgs = methodArgs });
 			return false;
 		}
