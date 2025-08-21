@@ -166,7 +166,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					return;
 				}
 
-				if (Bank.loadState == BankLoadState.Loaded || Bank.loadState == BankLoadState.TimedOut)
+				if (Bank.loadState == BankLoadState.Loaded)
 				{
 					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {Bank.name} sound Bank - Bank ID : {Bank.soundbankId}");
 					if (Bank.bankType != 0)
@@ -590,12 +590,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							}, Addressables.MergeMode.Union, false);
 
 							await streamingAssetAsyncHandle.Task;
-#if UNITY_EDITOR
-							if (startingSceneName != SceneManager.GetActiveScene().name)
-							{
-								bank.loadState = BankLoadState.TimedOut;
-							}
-#endif
 							Addressables.Release(streamingAssetAsyncHandle);
 #if UNITY_EDITOR
 						}
@@ -610,8 +604,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			// WG-60155 Release the bank asset AFTER streaming media assets are handled, otherwise Unity can churn needlessly if they are all in the same asset bundle!
-			if(bank.loadState != BankLoadState.TimedOut)
-				OnBankLoaded(bank);
+			OnBankLoaded(bank);
 			if (asyncHandle.IsValid())
 			{
 				Addressables.Release(asyncHandle);
