@@ -9,6 +9,7 @@
         "Unity.ResourceManager",
         "Unity.ScriptableBuildPipeline",
         "AK.Wwise.Unity.API",
+        "AK.Wwise.Unity.API.Editor",
         "AK.Wwise.Unity.Addressables",
         "AK.Wwise.Unity.API.WwiseTypes",
         "AK.Wwise.Unity.ProjectDatabase",

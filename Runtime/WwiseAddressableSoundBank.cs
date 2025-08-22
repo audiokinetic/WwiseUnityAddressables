@@ -71,6 +71,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static GetWwisePlatformNameDelegate GetWwisePlatformNameFromBuildTarget;
 #endif
 
+		public WwiseBankPerPlatformEntry CurrentPlatformAssets
+		{
+			get { return currentPlatformAssets;}
+		}
+
 		public uint SoundbankId
 		{
 			get { return soundbankId; }
