@@ -100,7 +100,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			language = "SFX";
 			type = "User";
 
-			var banksPath = GetFullSoundbanksPath() + Path.DirectorySeparatorChar;
+			var banksPath = GetFullSoundbanksPath();
+			if (!banksPath.EndsWith(Path.DirectorySeparatorChar))
+			{
+				banksPath += Path.DirectorySeparatorChar;
+			}
 			var assetsFullPath = Path.GetFullPath(assetPath);
 
 			// TODO Use Path.RelativePath as soon as Unity uses a .NET version that includes it (i.e 2021.3)
