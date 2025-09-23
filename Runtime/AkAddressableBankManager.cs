@@ -40,6 +40,39 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	{
 		public static ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> m_AddressableBanks =
 			new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>();
+		
+		
+		public static ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> GetValidBanks()
+		{
+			bool needsCleanup = false;
+
+			foreach (var kvp in m_AddressableBanks)
+			{
+				if (kvp.Value == null)
+				{
+					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: An Addressable Bank was invalid. An editor restart may be required. Did you delete the bank or it's asset while it was still loaded?");
+					needsCleanup = true;
+					break;
+				}
+			}
+
+			if (needsCleanup)
+			{
+				var newDictionary = new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>();
+
+				foreach (var kvp in m_AddressableBanks)
+				{
+					if (kvp.Value != null)
+					{
+						newDictionary.TryAdd(kvp.Key, kvp.Value);
+					}
+				}
+
+				m_AddressableBanks = newDictionary;
+			}
+
+			return m_AddressableBanks;
+		}
 
 		public static ConcurrentDictionary<string, string> m_BanksToUnload =
 			new ConcurrentDictionary<string, string>();
@@ -295,7 +328,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void UnloadAllBanks(bool clearBankDictionary = true)
 		{
-			foreach (var bank in m_AddressableBanks.Values)
+			foreach (var bank in GetValidBanks().Values)
 			{
 				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: false); ;
 			}
@@ -328,7 +361,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var banksToReload = new List<WwiseAddressableSoundBank>();
 			if (parseBanks)
 			{
-				foreach (var bank in m_AddressableBanks.Values)
+				foreach (var bank in GetValidBanks().Values)
 				{
 					if (bank.currentLanguage == "SFX" || bank.currentLanguage == language)
 						continue;
@@ -637,7 +670,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public bool LoadedBankContainsEvent(string eventName, uint eventId, object eventObject, string methodName, Type[] methodArgTypes, object[] methodArgs)
 		{
-			foreach (var bank in m_AddressableBanks.Values)
+			foreach (var bank in GetValidBanks().Values)
 			{
 				if (bank.loadState == BankLoadState.Loaded && bank.eventNames != null && bank.eventNames.Contains(eventName))
 				{
@@ -709,7 +742,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
 				if (InitBankLoaded && bank.name == InitBank.name)
 				{
-					foreach (var b in m_AddressableBanks.Values)
+					foreach (var b in GetValidBanks().Values)
 					{
 						if (b.loadState == BankLoadState.WaitingForInitBankToLoad)
 						{
