@@ -417,7 +417,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				return await ExecuteUpdate(platformName, newBankName, language, type);
 			}
-			if (!isJsonFileMissing && AkUtilities.IsAutoBankEnabled())
+			if (!isJsonFileMissing && WwiseAddressableAdapter.Instance.IsAutoBankEnabled())
 			{
 				WwiseProjectDatabase.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
 				isJsonFileMissing = true;

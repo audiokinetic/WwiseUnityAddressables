@@ -28,32 +28,7 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 {
 	public static void ResetInstance()
 	{
-		if(m_Instance != null)
-		{
-			InitializationDelegate copyInitialize = m_Instance.initializationDelegate;
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-			ReInitializationDelegate copyReInitialize = m_Instance.reInitializationDelegate;
-#endif
-			TerminationDelegate copyTerminate = m_Instance.terminationDelegate;
-#if WWISE_2024_OR_LATER
-			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
-#else
-			m_Instance = new AkAddressablesSoundEngineInitialization();
-#endif
-			m_Instance.initializationDelegate = copyInitialize;
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-			m_Instance.reInitializationDelegate = copyReInitialize;
-#endif
-			m_Instance.terminationDelegate = copyTerminate;
-		}
-		else
-		{
-#if WWISE_2024_OR_LATER
-			m_Instance = new AkUnityAddressablesSoundEngineInitialization();
-#else
-			m_Instance = new AkAddressablesSoundEngineInitialization();
-#endif
-		}
+		WwiseAddressableAdapter.Instance.ResetInstance(m_Instance);
 	}
 
 	protected override void LoadInitBank()
