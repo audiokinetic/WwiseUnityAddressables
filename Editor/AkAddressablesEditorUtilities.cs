@@ -230,7 +230,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				WwisePlatformRef platformInfo = new WwisePlatformRef(platformName);
 				if (platformInfo.Name == null)
 				{ 
-					WwiseProjectDatabase.Init(AkWwiseEditorSettings.GetRootOutputPath(), platformName, language);
+					WwiseProjectDatabase.Init(WwiseAddressableAdapter.Instance.GetRootOuputPath(), platformName, language);
 				}
 			}
 			if (SoundbanksInfo.ContainsKey(platformName) && SoundbanksInfo[platformName].containsInvalidEntry)
@@ -250,7 +250,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName, type);
 			if (!sbInfo.IsValid)
 			{
-				WwiseProjectDatabase.Init(AkWwiseEditorSettings.GetRootOutputPath(), platformName, language);
+				WwiseProjectDatabase.Init(WwiseAddressableAdapter.Instance.GetRootOuputPath(), platformName, language);
 				sbInfo = new WwiseSoundBankRef(newBankName, type);
 			}
 			if (sbInfo.IsValid)
@@ -461,13 +461,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				return await ExecuteUpdate(platformName, newBankName, language, type);
 			}
-			if (!isJsonFileMissing && AkUtilities.IsAutoBankEnabled())
+			if (!isJsonFileMissing && WwiseAddressableAdapter.Instance.IsAutoBankEnabled())
 			{
 				WwiseProjectDatabase.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
 				isJsonFileMissing = true;
-				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml." +
-				                 $"Using the SoundbanksInfo.xml is not the recommended option and it involves a manual support for auto-defined Soundbanks." +
-				                 $"To benefit from an automatic support of auto-defined Soundbanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
+				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 			}
 #endif
 			var xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
