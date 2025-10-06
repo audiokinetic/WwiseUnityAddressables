@@ -14,7 +14,7 @@ software or, alternatively, in accordance with the terms contained
 in a written agreement between you and Audiokinetic Inc.
 Copyright (c) 2025 Audiokinetic Inc.
 *******************************************************************************/
-
+#if ADDRESSABLES_API_BROWSER_TREE_VIEW
 using System.Collections.Generic;
 using AK.Wwise.Unity.WwiseAddressables;
 using UnityEditor;
@@ -32,8 +32,8 @@ public class AddressableBrowserTreeView
 
 	static AddressableBrowserTreeView()
 	{
-	    AkWwiseTreeView.wwiseBrowserColumnDelegate += DrawAddressableHeaderColumn;
-	    AkWwiseTreeView.wwiseBrowserCellDelegate += DrawAddressableCell;
+		AkWwiseTreeView.wwiseBrowserColumnDelegate += DrawAddressableHeaderColumn;
+		AkWwiseTreeView.wwiseBrowserCellDelegate += DrawAddressableCell;
 	    WwiseProjectDatabase.SoundBankDirectoryUpdated += ClearCache;
 	    
 	    AddressableSettings = AddressableAssetSettingsDefaultObject.Settings;
@@ -174,3 +174,4 @@ public class AddressableBrowserTreeView
 		return indexOfAsset;
 	}
 }
+#endif

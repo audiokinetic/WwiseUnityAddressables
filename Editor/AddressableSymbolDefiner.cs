@@ -1,5 +1,5 @@
-using System;
 using System.Linq;
+using AK.Wwise.Unity.WwiseAddressables;
 using UnityEditor;
 
 [InitializeOnLoad]
@@ -9,7 +9,6 @@ public static class AddressableSymbolDefiner
 
     static AddressableSymbolDefiner()
     {
-
         if (PlayerSettings.GetScriptingDefineSymbolsForGroup(BuildTargetGroup.Standalone).Contains(CurrentVersion))
         {
             return;
@@ -17,15 +16,15 @@ public static class AddressableSymbolDefiner
 #if !WWISE_2024_OR_LATER
         return;
 #endif
-        foreach (BuildTargetGroup targetGroup in Enum.GetValues(typeof(BuildTargetGroup)))
+        foreach (BuildTargetGroup targetGroup in AkAddressablesUtilities.GetNonObsoleteTargetGroups())
         {
-            if (targetGroup != BuildTargetGroup.Unknown)
+            if (targetGroup == BuildTargetGroup.Unknown)
             {
-                AddDefineSymbols(targetGroup);
+                continue;
             }
+            AddDefineSymbols(targetGroup);
         }
     }
-
     private static void AddDefineSymbols(BuildTargetGroup targetGroup)
     {
         string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(targetGroup);
