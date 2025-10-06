@@ -214,11 +214,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 							UnityEditor.EditorGUILayout.SelectableLabel(settings.MetadataPath, Styles.TextField, UnityEngine.GUILayout.Height(17));
 							if (Ellipsis())
 							{
-								var OpenInPath = System.IO.Path.GetDirectoryName(AkUtilities.GetFullPath(UnityEngine.Application.dataPath, settings.MetadataPath));
+								var OpenInPath = System.IO.Path.GetDirectoryName(WwiseAddressableAdapter.Instance.GetFullPath(UnityEngine.Application.dataPath, settings.MetadataPath));
 								var MetadataPathNew = UnityEditor.EditorUtility.OpenFolderPanel("Select your metadata Project", OpenInPath, "WwiseAddressableMetadata");
 								if (MetadataPathNew.Length != 0)
 								{
-									settings.MetadataPath = AkUtilities.MakeRelativePath(UnityEngine.Application.dataPath, MetadataPathNew);
+									settings.MetadataPath = WwiseAddressableAdapter.Instance.MakeRelativePath(UnityEngine.Application.dataPath, MetadataPathNew);
 									changed = true;
 								}
 							}
