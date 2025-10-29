@@ -33,9 +33,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	[InitializeOnLoad]
 	public class AkAddressablesEditorUtilities : MonoBehaviour
 	{
+		public static IDictionary<string, string> ValidPlatforms = new Dictionary<string, string>();
 		static AkAddressablesEditorUtilities()
 		{
 			WwiseAddressableSoundBank.GetWwisePlatformNameFromBuildTarget = GetWwisePlatformNameFromBuildTarget;
+			ValidPlatforms = AkUtilities.GetAllBankPaths(AkBasePathGetter.GetWwiseProjectPath());
+			WwiseProjectDatabase.SoundBankDirectoryUpdated += OnSoundBankUpdate;
+			EditorApplication.quitting += Cleanup;
+		}
+		
+		private static void Cleanup()
+		{
+			WwiseProjectDatabase.SoundBankDirectoryUpdated -= OnSoundBankUpdate;
+			EditorApplication.quitting -= Cleanup;
 		}
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 		static void RefreshIsJsonFileMissing()
@@ -79,6 +89,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 #endif
 		}
+		
+		private static void OnSoundBankUpdate()
+		{
+			ValidPlatforms = AkUtilities.GetAllBankPaths(AkBasePathGetter.GetWwiseProjectPath());
+		}
+
 
 		public static string GetWwisePlatformNameFromBuildTarget(BuildTarget platform)
 		{
@@ -100,42 +116,56 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			platform = string.Empty;
 			language = "SFX";
 			type = "User";
-
-			var banksPath = GetFullSoundbanksPath();
-			if (!banksPath.EndsWith(Path.DirectorySeparatorChar))
+			
+			if (ValidPlatforms == null)
 			{
-				banksPath += Path.DirectorySeparatorChar;
+				return;
 			}
-			var assetsFullPath = Path.GetFullPath(assetPath);
 
-			// Remove the temp folder from the path when the asset import happens during a migration
 			var r = new Regex(Regex.Escape("_WwiseIntegrationTemp"));
-			assetsFullPath = r.Replace(assetsFullPath, "", 1);
+			assetPath  = r.Replace(assetPath, "", 1);
 
-			// TODO Use Path.RelativePath as soon as Unity uses a .NET version that includes it (i.e 2021.3)
-			var assetRelPath = assetsFullPath.Replace(banksPath, "");
+			var wrongSeparatorChar = System.IO.Path.DirectorySeparatorChar == '/' ? '\\' : '/';
+			string normalizedPath = assetPath.Replace(wrongSeparatorChar, System.IO.Path.DirectorySeparatorChar);
 
-			string[] parts = assetRelPath.Split(Path.DirectorySeparatorChar);
-			platform = parts[0];
-
-			if (parts.Length > 2)
+			string[] segments = normalizedPath.Split(System.IO.Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+			
+			int length = segments.Length;
+			
+			int platformIndex = -1;
+			
+			for (int i = length - 1; i >= 0; i--) 
 			{
-				// Asset is stored in a sub-folder; we must identify the purpose of the sub-folder.
-				if (parts[1] == "Media" || parts[1] == "Bus" || parts[1] == "Event")
+				if (ValidPlatforms.ContainsKey(segments[i]))
 				{
-					type = parts[1];
-					// Starting with Wwise 2022.1, loose media files are stored in a sub-directory named "Media".
-					// These themselves can be in localized sub-folders.
-					if (parts.Length > 3)
+					platformIndex = i;
+					break;
+				}
+			}
+
+			if (platformIndex == -1)
+			{
+				return;
+			}
+
+			platform = segments[platformIndex];
+
+			if (segments.Length > (platformIndex + 2))
+			{
+				if (segments[platformIndex + 1] == "Media" || segments[platformIndex + 1] == "Bus" || segments[platformIndex + 1] == "Event")
+				{
+					type = segments[platformIndex + 1];
+
+					if (segments.Length > (platformIndex + 3))
 					{
-						// The sub-sub folder name is the locale string
-						language = parts[2];
+						language = segments[platformIndex +2];
 					}
 				}
+				
 				else
 				{
 					// Localized bank file; the sub-folder name is the locale string
-					language = parts[1];
+					language = segments[platformIndex + 1];
 				}
 			}
 		}
@@ -418,7 +448,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				platformName = AkBasePathGetter.GetPlatformName();
 			}
 
-			var sourceFolder = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName);
+			if (ValidPlatforms == null || !ValidPlatforms.ContainsKey(platformName))
+			{
+				return null;
+			}
+
+			var sourceFolder = Path.Combine(AkUtilities.GetFullPath(UnityEngine.Application.dataPath, ValidPlatforms[platformName]));
 			
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			var jsonFilename = Path.Combine(sourceFolder, "SoundbanksInfo.json");
