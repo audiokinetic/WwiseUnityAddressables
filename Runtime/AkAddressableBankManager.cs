@@ -289,6 +289,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		private static WwiseAddressableSoundBank FindInitBank()
 		{
+			//Don't log an error from not finding the initBankHolder, as CreateWwiseGlobal will ensure the initBankHolder is added either on Scene creation or Scene reload from the reload script.
+			if (!Application.isPlaying && AkWwiseEditorSettings.Instance.CreateWwiseGlobal)
+			{
+				return null;
+			}
+
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
 			if (foundBank.Count() == 0)
 			{
@@ -403,7 +409,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void UnloadInitBank()
 		{
-			if (InitBank != null)
+			//Not using the accessor here as if the initBank wasn't set on load, there's no point trying to unload it.
+			if (initBank != null)
 			{
 				BankHandle initBankHandle = new BankHandle(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
 				initBankHandle.UnloadBank();
