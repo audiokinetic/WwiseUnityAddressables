@@ -27,14 +27,23 @@ public class AddressableBrowserTreeView
 {
 	static readonly AddressableAssetSettings AddressableSettings;
 	static readonly bool AddressableSettingsIsValid;
+	private static readonly Dictionary<System.Guid, WwiseObjectReference> BankInfoCache;
+	private const string ADDRESSABLE_ENTRY_NOT_FOUND_MESSAGE = "Addressable entry not found";
 
 	static AddressableBrowserTreeView()
 	{
 	    AkWwiseTreeView.wwiseBrowserColumnDelegate += DrawAddressableHeaderColumn;
 	    AkWwiseTreeView.wwiseBrowserCellDelegate += DrawAddressableCell;
+	    WwiseProjectDatabase.SoundBankDirectoryUpdated += ClearCache;
 	    
 	    AddressableSettings = AddressableAssetSettingsDefaultObject.Settings;
 	    AddressableSettingsIsValid = AddressableSettings != null;
+	    BankInfoCache = new Dictionary<System.Guid, WwiseObjectReference>();
+	}
+
+	static void ClearCache()
+	{
+		BankInfoCache.Clear();
 	}
 
 	static void DrawAddressableHeaderColumn(List<MultiColumnHeaderState.Column> columns)
@@ -54,83 +63,103 @@ public class AddressableBrowserTreeView
 		    }
 	    );
 	}
-
+	
 	static void DrawAddressableCell(AkWwiseTreeView.AkWwiseTreeViewCellInfo wwiseTreeViewCellInfo)
 	{
-	    if (wwiseTreeViewCellInfo.Column == AkWwiseTreeView.ObjectColumns.AddressableGroup)
-	    {
-    		if (!AddressableSettingsIsValid)
-    		{
-    			return;
-    		}
-    		if (wwiseTreeViewCellInfo.Item.objectType == WwiseObjectType.Event)
-    		{
-    			var wwiseObjectReference = WwiseObjectReference.FindOrCreateWwiseObject(wwiseTreeViewCellInfo.Item.objectType, wwiseTreeViewCellInfo.Item.name, wwiseTreeViewCellInfo.Item.objectGuid);
-    			if (wwiseObjectReference == null)
-    			{
-    				return;
-    			}
-    			var eventReference = wwiseObjectReference as WwiseEventReference;
-    			if (eventReference == null)
-    			{
-    				return;
-    			}
-    			if (eventReference.AutoBank != null)
-    			{
-    				int indexOfCurrentLanguage = GetAddressableAssetIndex(eventReference.AutoBank, wwiseTreeViewCellInfo.CellRect);
-    				if (indexOfCurrentLanguage == -1)
-    				{
-    					return;
-    				}
-    				DisplayAddressableEntry(eventReference.AutoBank.CurrentPlatformAssets.LocalizedBanksValues[indexOfCurrentLanguage].editorAsset, wwiseTreeViewCellInfo.CellRect);	
-    			}
-    			else
-    			{
-    				UnityEngine.GUI.Label(wwiseTreeViewCellInfo.CellRect, "Not an Autobank");
-    			}
-    				
-    		}
-    		else if (wwiseTreeViewCellInfo.Item.objectType == WwiseObjectType.Soundbank)
-    		{
-    			var wwiseObjectReference = WwiseObjectReference.FindOrCreateWwiseObject(wwiseTreeViewCellInfo.Item.objectType, wwiseTreeViewCellInfo.Item.name, wwiseTreeViewCellInfo.Item.objectGuid);
-    			if (wwiseObjectReference == null)
-    			{
-    				return;
-    			}
-    			var bankReference = wwiseObjectReference as WwiseBankReference;
-    			if (bankReference == null)
-    			{
-    				return;
-    			}
+		if (wwiseTreeViewCellInfo.Column != AkWwiseTreeView.ObjectColumns.AddressableGroup || !AddressableSettingsIsValid)
+		{
+			return;
+		}
 
-    			int indexOfCurrentLanguage = GetAddressableAssetIndex(bankReference.AddressableBank, wwiseTreeViewCellInfo.CellRect);
-    			if (indexOfCurrentLanguage == -1)
-    			{
-    				return;
-    			}
-    			
-    			DisplayAddressableEntry(bankReference.AddressableBank.CurrentPlatformAssets.LocalizedBanksValues[indexOfCurrentLanguage].editorAsset, wwiseTreeViewCellInfo.CellRect);
-    		}
-	    }
+		if (!UnityEngine.Device.Application.isPlaying && !BankInfoCache.ContainsKey(wwiseTreeViewCellInfo.Item.objectGuid))
+		{
+			UpdateBankInfoCache(wwiseTreeViewCellInfo);
+		}
+        
+		RenderAddressableGroup(wwiseTreeViewCellInfo);
 	}
-	private static void DisplayAddressableEntry(WwiseSoundBankAsset soundBankAsset, UnityEngine.Rect cellRect)
+	
+	private static void UpdateBankInfoCache(AkWwiseTreeView.AkWwiseTreeViewCellInfo wwiseTreeViewCellInfo)
 	{
-		var assetPath = UnityEditor.AssetDatabase.GetAssetPath(soundBankAsset);
-		AddressableAssetEntry entry = AddressableSettings.FindAssetEntry(UnityEditor.AssetDatabase.AssetPathToGUID(assetPath));
+		if (wwiseTreeViewCellInfo.Item.objectType != WwiseObjectType.Event && wwiseTreeViewCellInfo.Item.objectType != WwiseObjectType.Soundbank)
+		{
+			return;
+		}
+
+		var wwiseObjectReference = WwiseObjectReference.FindOrCreateWwiseObject(
+			wwiseTreeViewCellInfo.Item.objectType, 
+			wwiseTreeViewCellInfo.Item.name, 
+			wwiseTreeViewCellInfo.Item.objectGuid
+		);
+
+		if (wwiseObjectReference != null)
+		{
+			BankInfoCache.Add(wwiseTreeViewCellInfo.Item.objectGuid, wwiseObjectReference);
+		}
+	}
+	
+	private static void RenderAddressableGroup(AkWwiseTreeView.AkWwiseTreeViewCellInfo wwiseTreeViewCellInfo)
+    {
+        if (!BankInfoCache.TryGetValue(wwiseTreeViewCellInfo.Item.objectGuid, out var wwiseObjectReference))
+        {
+            return;
+        }
+
+        if (wwiseTreeViewCellInfo.Item.objectType == WwiseObjectType.Event)
+        {
+			var eventReference = wwiseObjectReference as WwiseEventReference;
+            if (eventReference == null)
+            {
+	            return;
+            }
+            if (eventReference.IsInUserDefinedSoundBank)
+            {
+	            UnityEngine.GUI.Label(wwiseTreeViewCellInfo.CellRect, "Not an Autobank");
+                return;
+            }
+
+            int indexOfCurrentLanguage = GetAddressableAssetIndex(eventReference.AutoBank, wwiseTreeViewCellInfo.CellRect);
+            if (indexOfCurrentLanguage != -1)
+            {
+                DisplayAddressableEntry(eventReference.AutoBank.CurrentPlatformAssets.LocalizedBanksValues[indexOfCurrentLanguage].editorAsset, wwiseTreeViewCellInfo.CellRect,wwiseTreeViewCellInfo.Item.name);
+            }
+        }
+        else if (wwiseTreeViewCellInfo.Item.objectType == WwiseObjectType.Soundbank)
+        {
+            var bankReference = wwiseObjectReference as WwiseBankReference;
+            if (bankReference?.AddressableBank == null)
+            {
+	            UnityEngine.GUI.Label(wwiseTreeViewCellInfo.CellRect, ADDRESSABLE_ENTRY_NOT_FOUND_MESSAGE);
+                return;
+            }
+
+            int indexOfCurrentLanguage = GetAddressableAssetIndex(bankReference.AddressableBank, wwiseTreeViewCellInfo.CellRect);
+            if (indexOfCurrentLanguage != -1)
+            {
+                DisplayAddressableEntry(bankReference.AddressableBank.CurrentPlatformAssets.LocalizedBanksValues[indexOfCurrentLanguage].editorAsset, wwiseTreeViewCellInfo.CellRect, wwiseTreeViewCellInfo.Item.name);
+            }
+        }
+    }
+	
+	private static void DisplayAddressableEntry(WwiseSoundBankAsset soundBankAsset, UnityEngine.Rect cellRect, string itemName)
+	{
+		var assetPath = AssetDatabase.GetAssetPath(soundBankAsset);
+		AddressableAssetEntry entry = AddressableSettings.FindAssetEntry(AssetDatabase.AssetPathToGUID(assetPath));
+       
 		if (entry == null)
 		{
-			UnityEngine.GUI.Label(cellRect, "Addressable entry not found for bank {item.name}");	
+			UnityEngine.GUI.Label(cellRect, ADDRESSABLE_ENTRY_NOT_FOUND_MESSAGE);   
 		}
 		else
 		{
 			var parentGroupName = entry.parentGroup.name;
-			UnityEngine.GUI.Label(cellRect, parentGroupName);	
+			UnityEngine.GUI.Label(cellRect, parentGroupName);  
 		}
 	}
 
 	private static int GetAddressableAssetIndex(WwiseAddressableSoundBank addressableSoundBank, UnityEngine.Rect cellRect)
 	{
-		string currentLanguage = AkWwiseInitializationSettings.ActivePlatformSettings.InitialLanguage;
+		string currentLanguage = AkWwiseInitializationSettings.Instance.UserSettings.m_StartupLanguage;
 		int indexOfAsset = System.Array.IndexOf(addressableSoundBank.CurrentPlatformAssets.LocalizedBankKeys, currentLanguage);
 		if (indexOfAsset != -1)
 		{
@@ -140,7 +169,7 @@ public class AddressableBrowserTreeView
 		indexOfAsset = System.Array.IndexOf(addressableSoundBank.CurrentPlatformAssets.LocalizedBankKeys, "SFX");
 		if (indexOfAsset == -1)
 		{
-			UnityEngine.GUI.Label(cellRect, $"Asset for {AkWwiseInitializationSettings.ActivePlatformSettings.InitialLanguage} not found");
+			UnityEngine.GUI.Label(cellRect, $"Asset for {currentLanguage} not found");
 		}
 		return indexOfAsset;
 	}

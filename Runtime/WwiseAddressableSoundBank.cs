@@ -33,6 +33,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		[SerializeField]
 		internal WwiseBankPerPlatformEntry[] m_dataPerPlatformList;
 
+		[System.Obsolete("This field is obsolete.", true)]
 		[SerializeField]
 		internal WwiseBankPerPlatformEntry currentPlatformAssets;
 
@@ -73,7 +74,21 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public WwiseBankPerPlatformEntry CurrentPlatformAssets
 		{
-			get { return currentPlatformAssets;}
+			get
+			{
+				string wwisePlatform = GetWwisePlatformNameFromBuildTarget(EditorUserBuildSettings.activeBuildTarget);
+				if (m_dataPerPlatformList != null)
+				{
+					foreach (var entry in m_dataPerPlatformList)
+					{
+						if (entry.WwisePlatform == wwisePlatform)
+						{
+							return entry;
+						}
+					}
+				}
+				return null;
+			}
 		}
 
 		public uint SoundbankId
@@ -172,11 +187,6 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					entry.LocalizedStreamingMediaKeys = entry.LocalizedStreamingMedia.Keys.ToArray();
 					entry.LocalizedStreamingMediaValues = new LocalizedStreamingMediaList();
 					entry.LocalizedStreamingMediaValues.Add(entry.LocalizedStreamingMedia.Values.ToList());
-
-					if (entry.WwisePlatform == wwisePlatform)
-					{
-						currentPlatformAssets = entry;
-					}
 				}
 			}
 #endif
