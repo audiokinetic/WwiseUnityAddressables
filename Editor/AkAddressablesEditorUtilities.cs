@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEditor;
 using System.Xml;
@@ -106,6 +107,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				banksPath += Path.DirectorySeparatorChar;
 			}
 			var assetsFullPath = Path.GetFullPath(assetPath);
+
+			// Remove the temp folder from the path when the asset import happens during a migration
+			var r = new Regex(Regex.Escape("_WwiseIntegrationTemp"));
+			assetsFullPath = r.Replace(assetsFullPath, "", 1);
 
 			// TODO Use Path.RelativePath as soon as Unity uses a .NET version that includes it (i.e 2021.3)
 			var assetRelPath = assetsFullPath.Replace(banksPath, "");
