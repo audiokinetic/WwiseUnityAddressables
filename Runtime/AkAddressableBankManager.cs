@@ -289,11 +289,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		private static WwiseAddressableSoundBank FindInitBank()
 		{
+#if UNITY_EDITOR
 			//Don't log an error from not finding the initBankHolder, as CreateWwiseGlobal will ensure the initBankHolder is added either on Scene creation or Scene reload from the reload script.
 			if (!Application.isPlaying && AkWwiseEditorSettings.Instance.CreateWwiseGlobal)
 			{
 				return null;
 			}
+#endif
 
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
 			if (foundBank.Count() == 0)
