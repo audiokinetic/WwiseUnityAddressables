@@ -39,10 +39,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
 
-			string platform;
-			string language;
-			string type;
-			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language, out type);
+			var bankAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
+			
+			string platform = bankAssetInfo.Platform;
+			string language = bankAssetInfo.Language;
+			string type = bankAssetInfo.Type;
+
 			bool isAutoBank = type != "User";
 
 			if (platform == null)
@@ -50,30 +52,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
 				return;
 			}
-			
-			var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language, type);
-
-			if (soundbankInfos == null)
-			{
-				Debug.LogWarning($"Skipping {ctx.assetPath}. SoundbanksInfo.xml could not be parsed.");
-				return;
-			}
-
-			if (!soundbankInfos.ContainsKey((assetName,type)))
-			{
-				Debug.LogWarning($"Skipping {ctx.assetPath} as it was not parsed in SoundbanksInfo.xml. Perhaps this bank no longer exists in the wwise project?");
-				return;
-			}
+		
 			WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
 			dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
 			dataAsset.language = language;
 			dataAsset.isAutoBank = isAutoBank;
-			var eventNames = soundbankInfos[(assetName,type)][language].events;
-			if (language !="SFX" && soundbankInfos[(assetName,type)].ContainsKey("SFX"))
-			{
-				eventNames.AddRange(soundbankInfos[(assetName,type)]["SFX"].events);
-			}
-			dataAsset.eventNames = eventNames;
 			byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
 			dataAsset.hash = hash;
 			ctx.AddObjectToAsset(string.Format("WwiseBank_{0}{1}_{2}", platform, language, assetName), dataAsset);

@@ -28,6 +28,7 @@ using UnityEngine;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
@@ -80,19 +81,35 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		
 		public static async Task UpdateAssetReferences(string[] assets)
 		{
-			HashSet<string> bankAssetsToProcess = new HashSet<string>();
-			HashSet<string> streamingAssetsToProcess = new HashSet<string>();
+			Dictionary<string, HashSet<AddressableEntryInformation>> bankAssetsToProcess = new Dictionary<string, HashSet<AddressableEntryInformation>>();
+			HashSet<AddressableEntryInformation> streamingAssetsToProcess = new HashSet<AddressableEntryInformation>();
 
 			foreach (var item in assets)
 			{
-				if (Path.GetExtension(item) == ".bnk")
+				string extension = Path.GetExtension(item);
+				if (extension != ".bnk" && extension != ".wem")
 				{
-					bankAssetsToProcess.Add(item);
+					continue;
+				}
+				
+				var newEntry = AkAddressablesEditorUtilities.ParseAssetPath(item);
+				
+				if (extension == ".bnk")
+				{
+					if (bankAssetsToProcess.ContainsKey(newEntry.Platform))
+					{
+						bankAssetsToProcess[newEntry.Platform].Add(newEntry);
+					}
+					else
+					{
+						HashSet<AddressableEntryInformation> newEntries = new HashSet<AddressableEntryInformation> { newEntry };
+						bankAssetsToProcess.Add(newEntry.Platform, newEntries);
+					}
 				}
 
-				if (Path.GetExtension(item) == ".wem")
+				if (extension == ".wem")
 				{
-					streamingAssetsToProcess.Add(item);
+					streamingAssetsToProcess.Add(newEntry);
 				}
 			}
 
@@ -100,8 +117,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache =
 					new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
-				await AddBankReferenceToAddressableBankAsset(addressableAssetCache, bankAssetsToProcess);
-				AddAssetsToAddressablesGroup(bankAssetsToProcess);
+				foreach (var platformBankAssetsToProcess in bankAssetsToProcess)
+				{
+					ImportEventNames(platformBankAssetsToProcess.Value);
+					await AddBankReferenceToAddressableBankAsset(addressableAssetCache, platformBankAssetsToProcess.Value);
+					AddAssetsToAddressablesGroup(platformBankAssetsToProcess.Value);
+				}
 			}
 
 			if (streamingAssetsToProcess.Count > 0)
@@ -113,18 +134,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		internal static async Task AddStreamedAssetsToBanks(HashSet<string> streamingAssetsAdded)
+		internal static async Task AddStreamedAssetsToBanks(HashSet<AddressableEntryInformation>  addedStreamingAssetsInformation)
 		{
 			try
 			{
-				foreach (var assetPath in streamingAssetsAdded)
+				foreach (var addedStreamingAssetInfo in addedStreamingAssetsInformation)
 				{
+					string assetPath = addedStreamingAssetInfo.AssetPath;
+					string platform = addedStreamingAssetInfo.Platform;
+					string language = addedStreamingAssetInfo.Language;
+					string type = addedStreamingAssetInfo.Type;
 					string name = Path.GetFileNameWithoutExtension(assetPath);
-
-					string platform;
-					string language;
-					string type;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
+					
 					bool isAutoBank = type != "User";
 
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
@@ -189,19 +210,27 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		}
 		public static void RemoveAssetReferences(string[] deletedAssets)
 		{
-			HashSet<string> bankAssetsToProcess = new HashSet<string>();
-			HashSet<string> streamingAssetsToProcess = new HashSet<string>();
+			HashSet<AddressableEntryInformation> bankAssetsToProcess = new HashSet<AddressableEntryInformation>();
+			HashSet<AddressableEntryInformation> streamingAssetsToProcess = new HashSet<AddressableEntryInformation>();
 
 			foreach (var item in deletedAssets)
 			{
-				if (Path.GetExtension(item) == ".bnk")
+				string extension = Path.GetExtension(item);
+				if (extension != ".bnk" && extension != ".wem")
 				{
-					bankAssetsToProcess.Add(item);
+					continue;
+				}
+				
+				var newEntry = AkAddressablesEditorUtilities.ParseAssetPath(item);
+
+				if (extension == ".bnk")
+				{
+					bankAssetsToProcess.Add(newEntry);
 				}
 
-				if (Path.GetExtension(item) == ".wem")
+				if (extension == ".wem")
 				{
-					streamingAssetsToProcess.Add(item);
+					streamingAssetsToProcess.Add(newEntry);
 				}
 			}
 
@@ -256,21 +285,65 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return group;
 		}
 
-		internal static async Task AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<string> bankAssetsAdded)
+		static async void ImportEventNames(HashSet<AddressableEntryInformation> addedBankAssetsInformation)
+		{
+			foreach (var addedBankAssetInfo in addedBankAssetsInformation)
+			{
+				string bankPath = addedBankAssetInfo.AssetPath;
+				string platform = addedBankAssetInfo.Platform;
+				string language = addedBankAssetInfo.Language;
+				string type = addedBankAssetInfo.Type;
+				string assetName = Path.GetFileNameWithoutExtension(bankPath);
+
+				if (platform == System.String.Empty)
+				{
+					Debug.LogWarning($"Skipping {bankPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
+					return;
+				}
+			
+				var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language, type);
+
+				if (soundbankInfos == null)
+				{
+					Debug.LogWarning($"Skipping {bankPath}. SoundbanksInfo.xml could not be parsed.");
+					return;
+				}
+
+				if (!soundbankInfos.ContainsKey((assetName,type)))
+				{
+					Debug.LogWarning($"Skipping {bankPath} as it was not parsed in SoundbanksInfo.xml. Perhaps this bank no longer exists in the wwise project?");
+					return;
+				}
+				var eventNames = soundbankInfos[(assetName,type)][language].events;
+				if (language !="SFX" && soundbankInfos[(assetName,type)].ContainsKey("SFX"))
+				{
+					eventNames.AddRange(soundbankInfos[(assetName,type)]["SFX"].events);
+				}
+				WwiseSoundBankAsset soundbankAsset = AssetDatabase.LoadAssetAtPath<WwiseSoundBankAsset>(bankPath);
+				if (soundbankAsset == null)
+				{
+					Debug.LogWarning($"WwiseSoundBankAsset for {bankPath} was not found. This points out to error when importing the soundbank.");
+				}
+				else
+				{
+					soundbankAsset.eventNames = eventNames;
+				}
+			}
+		}
+
+		internal static async Task AddBankReferenceToAddressableBankAsset(ConcurrentDictionary<string, WwiseAddressableSoundBank> addressableAssetCache, HashSet<AddressableEntryInformation> addedBankAssetsInformation)
 		{
 			List<CreateAssetEntry> itemsToCreate = new List<CreateAssetEntry>();
 			try
 			{
-
-				foreach (var bankPath in bankAssetsAdded)
+				foreach (var addedBankAssetInfo in addedBankAssetsInformation)
 				{
+					string bankPath = addedBankAssetInfo.AssetPath;
+					string platform = addedBankAssetInfo.Platform;
+					string language = addedBankAssetInfo.Language;
+					string type = addedBankAssetInfo.Type;
 					string name = Path.GetFileNameWithoutExtension(bankPath);
 
-					string platform;
-					string language;
-					string type;
-					AkAddressablesEditorUtilities.ParseAssetPath(bankPath, out platform, out language, out type);
-					
 					string noPlatformAndLanguageBankAssetPath = bankPath.Replace(platform + "/", "");
 					noPlatformAndLanguageBankAssetPath = noPlatformAndLanguageBankAssetPath.Replace(language + "/", "");
 					string addressableBankAssetPath = Path.ChangeExtension(noPlatformAndLanguageBankAssetPath, ".asset");	
@@ -398,18 +471,18 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		internal static void RemoveStreamedAssetsFromBanks(HashSet<string> streamingAssetsToRemove)
+		internal static void RemoveStreamedAssetsFromBanks(HashSet<AddressableEntryInformation> streamingAssetsToRemove)
 		{
 			try
 			{
 				var foundBanks = AssetDatabase.FindAssets($"t:{typeof(WwiseAddressableSoundBank).Name}");
 				var updatedBanks = new List<string>();
-				foreach (var assetPath in streamingAssetsToRemove)
+				foreach (var assetInformation in streamingAssetsToRemove)
 				{
-					string platform;
-					string language;
-					string type;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
+					string assetPath = assetInformation.AssetPath;
+					string platform = assetInformation.Platform;
+					string language = assetInformation.Language;
+					
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -430,18 +503,17 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		internal static void RemoveBanksFromAddressableSoundbanks(HashSet<string> bankAssetsToRemove)
+		internal static void RemoveBanksFromAddressableSoundbanks(HashSet<AddressableEntryInformation> bankAssetsToRemove)
 		{
 			try
 			{
 				var foundBanks = AssetDatabase.FindAssets($"t:{typeof(WwiseAddressableSoundBank).Name}");
 				var updatedBanks = new List<string>();
-				foreach (var assetPath in bankAssetsToRemove)
+				foreach (var assetInformation in bankAssetsToRemove)
 				{
-					string platform;
-					string language;
-					string type;
-					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
+					string assetPath = assetInformation.AssetPath;
+					string platform = assetInformation.Platform;
+					string language = assetInformation.Language;
 					var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
 					foreach (var bankGuid in foundBanks)
@@ -463,7 +535,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		internal static void AddAssetsToAddressablesGroup(HashSet<string> assetsAdded, string groupName = "")
+		internal static void AddAssetsToAddressablesGroup(HashSet<AddressableEntryInformation> addedAssetsInformation, string groupName = "")
 		{
 			if (AddressableAssetSettingsDefaultObject.Settings == null)
 			{
@@ -480,14 +552,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			List<AddressableAssetEntry> groupEntriesModified = new List<AddressableAssetEntry>();
 			var parseGroupNames = string.IsNullOrEmpty(groupName);
-			foreach (var assetPath in assetsAdded)
+			foreach (var addedAssetInfo in addedAssetsInformation)
 			{
+				string assetPath = addedAssetInfo.AssetPath;
+				string platform = addedAssetInfo.Platform;
+				string language = addedAssetInfo.Language;
 				string guid = AssetDatabase.AssetPathToGUID(assetPath);
-
-				string platform;
-				string language;
-				string type;
-				AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
+			
 				AddressableMetadata assetMetadata = ScriptableObject.CreateInstance<AddressableMetadata>();
 
 				if (parseGroupNames)
@@ -546,7 +617,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return groupName;
 		}
 
-		internal static void RemoveAssetsFromAddressables(HashSet<string> assetsToRemove)
+		internal static void RemoveAssetsFromAddressables(HashSet<AddressableEntryInformation> assetsToRemove)
 		{
 			if (AddressableAssetSettingsDefaultObject.Settings == null)
 			{
@@ -560,8 +631,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return;
 			}
 
-			foreach (var assetPath in assetsToRemove)
+			foreach (var assetInformation in assetsToRemove)
 			{
+				string assetPath = assetInformation.AssetPath;
 				string guid = AssetDatabase.AssetPathToGUID(assetPath);
 				var assetEntry = settings.FindAssetEntry(guid);
 				if (assetEntry == null)
