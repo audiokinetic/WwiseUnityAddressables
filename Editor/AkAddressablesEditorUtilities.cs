@@ -27,9 +27,33 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEditor;
 using System.Xml;
+using UnityEditor.AddressableAssets.Settings;
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
+	public struct AddressableEntryInformation : IEquatable<AddressableEntryInformation>
+	{
+		public string AssetPath;
+		public string Platform;
+		public string Language;
+		public string Type;
+
+		public bool Equals(AddressableEntryInformation other)
+		{
+			return AssetPath == other.AssetPath && Platform == other.Platform && Language == other.Language && Type == other.Type;
+		}
+
+		public override bool Equals(object obj)
+		{
+			return obj is AddressableEntryInformation other && Equals(other);
+		}
+
+		public override int GetHashCode()
+		{
+			return HashCode.Combine(AssetPath, Platform, Language, Type);
+		}
+	}
+	
 	[InitializeOnLoad]
 	public class AkAddressablesEditorUtilities : MonoBehaviour
 	{
@@ -111,15 +135,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return pathContent.Contains("Event");
 		}
 
-		public static void ParseAssetPath(string assetPath, out string platform, out string language, out string type)
+		public static AddressableEntryInformation  ParseAssetPath(string assetPath)
 		{
-			platform = string.Empty;
-			language = "SFX";
-			type = "User";
+			var entry = new AddressableEntryInformation() { AssetPath = assetPath, Platform = String.Empty, Language = "SFX", Type = "User" };
 			
 			if (ValidPlatforms == null)
 			{
-				return;
+				return entry;
 			}
 
 			var r = new Regex(Regex.Escape("_WwiseIntegrationTemp"));
@@ -145,29 +167,30 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (platformIndex == -1)
 			{
-				return;
+				return entry;
 			}
 
-			platform = segments[platformIndex];
+			entry.Platform = segments[platformIndex];
 
 			if (segments.Length > (platformIndex + 2))
 			{
 				if (segments[platformIndex + 1] == "Media" || segments[platformIndex + 1] == "Bus" || segments[platformIndex + 1] == "Event")
 				{
-					type = segments[platformIndex + 1];
+					entry.Type = segments[platformIndex + 1];
 
 					if (segments.Length > (platformIndex + 3))
 					{
-						language = segments[platformIndex +2];
+						entry.Language = segments[platformIndex +2];
 					}
 				}
 				
 				else
 				{
 					// Localized bank file; the sub-folder name is the locale string
-					language = segments[platformIndex + 1];
+					entry.Language = segments[platformIndex + 1];
 				}
 			}
+			return entry;
 		}
 
 		public static string GetSoundbanksPath()

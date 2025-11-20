@@ -34,11 +34,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public override void OnImportAsset(AssetImportContext ctx)
 		{
 			string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
-
-			string platform;
-			string language;
-			string type;
-			AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath, out platform, out language, out type);
+	
+			var streamingAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
+			
+			string platform = streamingAssetInfo.Platform;
+			string language = streamingAssetInfo.Language;
 
 			if (platform == null)
 			{
