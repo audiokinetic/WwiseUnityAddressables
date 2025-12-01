@@ -1,6 +1,6 @@
 {
   "name": "com.audiokinetic.wwise.addressables",
-  "version": "2023.1.14",
+  "version": "2023.1.18",
   "displayName": "Wwise Unity Addressables",
   "description": "Wwise Unity Addressables. We recommend that you obtain the package through GitHub. Append the version number of your Wwise Unity Integration version, in #XX.X.X format, to the URL. For example, https://github.com/audiokinetic/WwiseUnityAddressables.git#v24.1.0. To update the package, we recommend that you use the Wwise Addressables Updater.",
   "unity": "2021.3",
