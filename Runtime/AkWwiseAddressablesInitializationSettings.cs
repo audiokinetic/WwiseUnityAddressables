@@ -95,7 +95,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			var createdAsset = CreateInstance<AkWwiseAddressablesInitializationSettings>();
-			AkUtilities.CreateFolder(AkWwiseEditorSettings.WwiseScriptableObjectRelativePath);
+			WwiseAddressableAdapter.Instance.CreateFolderFromAkUtilities(AkWwiseEditorSettings.WwiseScriptableObjectRelativePath);
 			UnityEditor.AssetDatabase.CreateAsset(createdAsset, path);
 			return createdAsset;
 		}
