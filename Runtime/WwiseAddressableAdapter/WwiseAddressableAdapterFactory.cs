@@ -21,11 +21,15 @@ public static class WwiseAddressableAdapterFactory
 {
     public static WwiseAddressableAdapter_Null CreateManager()
     {
-//BROWSER_TREE_VIEW added a dependency on new classes absent before this version, but did not edit the adapter.
-#if ADDRESSABLES_API_BREAK_AK_UTILITIES || ADDRESSABLES_API_BROWSER_TREE_VIEW
-        return new WwiseAddressableAdapter_Ak_Utilities();
+#if ADDRESSABLES_API_BREAK_AK_UTILITIES_WWISE_LOGGER
+        return new WwiseAddressableAdapter_Ak_Wwise_Logger();
 #else
         WwiseAddressableAdapter_Null adapter = new WwiseAddressableAdapter_Null();
+#if ADDRESSABLES_API_BREAK_AK_UTILITIES || ADDRESSABLES_API_BROWSER_TREE_VIEW
+        adapter = new WwiseAddressableAdapter_Ak_Utilities();
+#else
+        adapter = new WwiseAddressableAdapter_Null();
+#endif
         adapter.LogMissMatchVersion();
         return adapter;
 #endif

@@ -37,7 +37,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (AkWwiseEditorSettings.Instance.RootOutputPath == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the RootOutputPath in the Wwise Editor settings or assets will not be properly imported.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: You need to set the RootOutputPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
 			var fullRootOutputPath = AkUtilities.GetFullPath(UnityEngine.Application.dataPath, AkWwiseEditorSettings.Instance.RootOutputPath);
@@ -77,12 +77,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (IsLookingForAutoBank)
 				{
-					Debug.LogWarning($"Could not find addressable bank asset : {assetPath}. If the event is in an User Defined Soundbank, make sure" +
+					WwiseAddressableAdapter.Instance.WwiseWarning($"Could not find addressable bank asset : {assetPath}. If the event is in an User Defined Soundbank, make sure" +
 					                 " to check the \"Is In User Define SoundBank\" box in the editor.");
 				}
 				else
 				{
-					Debug.LogError($"Could not find addressable bank asset : {assetPath}");
+					WwiseAddressableAdapter.Instance.WwiseError($"Could not find addressable bank asset : {assetPath}");
 				}
 			}
 			

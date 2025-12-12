@@ -6,7 +6,8 @@
         "Unity.ResourceManager",
         "AK.Wwise.Unity.API",
         "AK.Wwise.Unity.ProjectDB",
-        "AK.Wwise.Unity.Utilities"
+        "AK.Wwise.Unity.Utilities",
+        "AK.Wwise.Unity.Logging"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
