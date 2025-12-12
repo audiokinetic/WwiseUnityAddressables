@@ -197,7 +197,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
 			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
@@ -208,7 +208,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: You need to set the GeneratedSoundbankPath in the Wwise Editor settings or assets will not be properly imported.");
 				return string.Empty;
 			}
 			var path = Path.Combine("Assets", AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath);
@@ -327,14 +327,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 				catch (XmlException e)
 				{
-					UnityEngine.Debug.LogError("Exception occurred while parsing SoundBanksInfo.xml. Cannot update project SoundBanks info: " + e);
+					WwiseAddressableAdapter.Instance.WwiseError("Exception occurred while parsing SoundBanksInfo.xml. Cannot update project SoundBanks info: " + e);
 					return null;
 				}
 
 				XmlElement root = doc.DocumentElement;
 				if (!Int32.TryParse(root.GetAttribute("SchemaVersion"), out int schemaVersion))
 				{
-					Debug.LogError($"Could not parse SoundbanksInfo.xml for {platformName}. Check {xmlFilename} for possible corruption.");
+					WwiseAddressableAdapter.Instance.WwiseError($"Could not parse SoundbanksInfo.xml for {platformName}. Check {xmlFilename} for possible corruption.");
 					return null;
 				}
 
@@ -352,7 +352,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (SoundbanksInfo[platformName].eventToSoundBankMap.Count == 0)
 			{
-				Debug.LogWarning($"Could not retrieve event data for {platformName} from SoundbanksInfo.xml. Check {xmlFilename} for possible corruption.");
+				WwiseAddressableAdapter.Instance.WwiseWarning($"Could not retrieve event data for {platformName} from SoundbanksInfo.xml. Check {xmlFilename} for possible corruption.");
 			}
 
 			return SoundbanksInfo[platformName];
@@ -488,23 +488,23 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				WwiseProjectDatabase.SoundBankDirectoryUpdated += RefreshIsJsonFileMissing;
 				isJsonFileMissing = true;
-				Debug.LogWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
+				WwiseAddressableAdapter.Instance.WwiseWarning($"Could not find SoundbanksInfo.json, falling back to SoundbanksInfo.xml. To fully benefit from AutoBanks, make sure Object GUID, Object Path and Generate JSON Metadata is checked in the WwiseProject. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 			}
 #endif
 			var xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
 			if (!File.Exists(xmlFilename))
 			{
-				Debug.LogWarning($"Could not find SoundbanksInfo.xml at {Path.Combine(AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName)}. Check the Generated Soundbanks Path in the Unity Wwise project settings. Using the Wwise Project to find SoundbanksInfo.xml.");
+				WwiseAddressableAdapter.Instance.WwiseWarning($"Could not find SoundbanksInfo.xml at {Path.Combine(AkWwiseEditorSettings.Instance.GeneratedSoundbanksPath, platformName)}. Check the Generated Soundbanks Path in the Unity Wwise project settings. Using the Wwise Project to find SoundbanksInfo.xml.");
 				if (!AkBasePathGetter.GetSoundBankPaths(platformName, out sourceFolder, out string destinationFolder))
 				{
-					Debug.LogError($"Failed to import {newBankName}. Could not get SoundBank folder for {platformName} from Wwise Project {AkWwiseEditorSettings.Instance.WwiseProjectPath}.");
+					WwiseAddressableAdapter.Instance.WwiseError($"Failed to import {newBankName}. Could not get SoundBank folder for {platformName} from Wwise Project {AkWwiseEditorSettings.Instance.WwiseProjectPath}.");
 					return null;
 				}
 				
 				xmlFilename = Path.Combine(sourceFolder, "SoundbanksInfo.xml");
 				if(!File.Exists(xmlFilename))
 				{
-					Debug.LogError($"Failed to import {newBankName}. Could not find SoundbanksInfo for {platformName} platform. Make sure your SoundBanks are generated and that the setting \"Generate XML Metadata\" is enabled. Then, clear {sourceFolder} and regenerate the Soundbanks.");
+					WwiseAddressableAdapter.Instance.WwiseError($"Failed to import {newBankName}. Could not find SoundbanksInfo for {platformName} platform. Make sure your SoundBanks are generated and that the setting \"Generate XML Metadata\" is enabled. Then, clear {sourceFolder} and regenerate the Soundbanks.");
 					return null;
 				}
 			}

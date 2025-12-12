@@ -69,7 +69,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (addressableSettings == null)
 			{
-				UnityEngine.Debug.LogWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
+				WwiseAddressableAdapter.Instance.WwiseWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
 				return;
 			}
 
