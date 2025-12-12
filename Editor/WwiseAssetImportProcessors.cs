@@ -195,10 +195,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 									    out AkAddressablesEditorUtilities.SoundBankInfo sbInfo))
 								{
 									if (int.TryParse(language, out int result))
-										UnityEngine.Debug.LogError(
+										WwiseAddressableAdapter.Instance.WwiseError(
 											"Wwise Unity Addressables: Sub-folders for generated files currently not supported. Please turn off the option in Wwise under Project Settings -> SoundBanks");
 									else
-										UnityEngine.Debug.LogError(
+										WwiseAddressableAdapter.Instance.WwiseError(
 											$"Wwise Unity Addressables: Unable to process asset at path {assetPath}: Unrecognized language {language}");
 									continue;
 								}
@@ -212,7 +212,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					}
 					else
 					{
-						UnityEngine.Debug.LogWarning(
+						WwiseAddressableAdapter.Instance.WwiseWarning(
 							$"Wwise Unity Addressables: Can't find containing SoundBank(s) for event {name}");
 					}
 				}
@@ -272,7 +272,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					string destinationBasePath;
 					string sourceBasePath;
 					AkBasePathGetter.GetSoundBankPaths(platform, out sourceBasePath, out destinationBasePath);
-					Debug.LogError($"Invalid entry detected in the Soundbanks information for Platform: {platform}. Please make sure Object GUID and Object Path are checked in the WwiseProject. Then clear {sourceBasePath} and regenerate the Soundbanks.");
+					WwiseAddressableAdapter.Instance.WwiseError($"Invalid entry detected in the Soundbanks information for Platform: {platform}. Please make sure Object GUID and Object Path are checked in the WwiseProject. Then clear {sourceBasePath} and regenerate the Soundbanks.");
 				}
 			}
 		}
@@ -445,7 +445,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						}
 						else
 						{
-							Debug.LogWarning($"Could not update {addressableBankAsset.name} with bank located at {bankPath}");
+							WwiseAddressableAdapter.Instance.WwiseWarning($"Could not update {addressableBankAsset.name} with bank located at {bankPath}");
 						}
 					}
 				}
@@ -570,7 +570,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var settings = AddressableAssetSettingsDefaultObject.Settings;
 			if (settings == null)
 			{
-				Debug.LogWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
+				WwiseAddressableAdapter.Instance.WwiseWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
 				return;
 			}
 			List<AddressableAssetEntry> groupEntriesModified = new List<AddressableAssetEntry>();
@@ -588,7 +588,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					if (string.IsNullOrEmpty(platform))
 					{
-						Debug.LogError($"Wwise Addressables import : could not parse platform for {assetPath}. It will not be made addressable.");
+						WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressables import : could not parse platform for {assetPath}. It will not be made addressable.");
 						continue;
 					}
 					if (GetAssetMetadataDelegate != null)
@@ -650,7 +650,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var settings = AddressableAssetSettingsDefaultObject.Settings;
 			if (settings == null)
 			{
-				Debug.LogWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
+				WwiseAddressableAdapter.Instance.WwiseWarningFormat("[Addressables] settings file not found.\nPlease go to Menu/Window/Asset Management/Addressables/Groups, then click 'Create Addressables Settings' button.");
 				return;
 			}
 

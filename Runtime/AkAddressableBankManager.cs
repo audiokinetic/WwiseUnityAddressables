@@ -50,7 +50,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (kvp.Value == null)
 				{
-					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: An Addressable Bank was invalid. An editor restart may be required. Did you delete the bank or it's asset while it was still loaded?");
+					WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager: An Addressable Bank was invalid. An editor restart may be required. Did you delete the bank or it's asset while it was still loaded?");
 					needsCleanup = true;
 					break;
 				}
@@ -183,7 +183,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				if (Bank.loadState == BankLoadState.Loading || Bank.loadState == BankLoadState.WaitingForPrepareEvent)
 				{
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {Bank.name} will be unloaded after it is done loading");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: {Bank.name} will be unloaded after it is done loading");
 					m_BanksToUnload.TryAdd(Bank.name, Bank.name);
 					return;
 				}
@@ -195,13 +195,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #else
 				AkSoundEngine.PrepareEvent(AkPreparationType.Preparation_Unload, new string[] { Bank.name }, 1);
 #endif
-					UnityEngine.Debug.Log($"Wwise Addressables Bank Manager: {Bank.name} is already unloaded.");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressables Bank Manager: {Bank.name} is already unloaded.");
 					return;
 				}
 
 				if (Bank.loadState == BankLoadState.Loaded)
 				{
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Unloading {Bank.name} sound Bank - Bank ID : {Bank.soundbankId}");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Unloading {Bank.name} sound Bank - Bank ID : {Bank.soundbankId}");
 					if (Bank.bankType != 0)
 					{
 #if WWISE_2024_OR_LATER
@@ -240,7 +240,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #endif
 						if (InitBank && Bank.name != InitBank.name)
 						{
-							UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Unloaded {Bank.name}, but it was not in the list of loaded banks");
+							WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager: Unloaded {Bank.name}, but it was not in the list of loaded banks");
 						}
 					}
 				}
@@ -299,19 +299,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
 			if (foundBank.Count() == 0)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: There is no InitBankHolder in the scene, please add one for Wwise to function properly.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: There is no InitBankHolder in the scene, please add one for Wwise to function properly.");
 				return null;
 			}
 
 			if (foundBank.Count() > 1)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: There is more than one InitBankHolder in the scene, which is not recommended.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: There is more than one InitBankHolder in the scene, which is not recommended.");
 			}
 
 			WwiseAddressableSoundBank InitBank = foundBank[0].GetAddressableInitBank();
 			if (InitBank == null)
 			{
-				UnityEngine.Debug.LogError("Wwise Addressables: The InitBankHolder could not get a valid reference to the Init bank.");
+				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: The InitBankHolder could not get a valid reference to the Init bank.");
 				return null;
 
 			}
@@ -436,7 +436,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (!InitBankLoaded && bank.name != "Init")
 				{
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: {bank.name} bank will be loaded after the init bank is loaded");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: {bank.name} bank will be loaded after the init bank is loaded");
 					bank.loadState = BankLoadState.WaitingForInitBankToLoad;
 					return;
 				}
@@ -472,7 +472,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (bank.Data == null)
 			{
-				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager : {bank.name} could not be loaded - Bank reference not set");
+				WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager : {bank.name} could not be loaded - Bank reference not set");
 				m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _);
 				return;
 			}
@@ -480,7 +480,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			AssetReferenceWwiseBankData bankData;
 			if (bank.Data.ContainsKey("SFX"))
 			{
-				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Loading {bank.name} bank");
+				WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Loading {bank.name} bank");
 				bankData = bank.Data["SFX"];
 				bank.currentLanguage = "SFX";
 			}
@@ -495,11 +495,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					bankData = bank.Data[currentLanguage];
 					bank.currentLanguage = currentLanguage;
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Loading {bank.name} - {currentLanguage}");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Loading {bank.name} - {currentLanguage}");
 				}
 				else
 				{
-					UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
+					WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
 					m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _);
 					bank.loadState = BankLoadState.Unloaded;
 					bank.refCount -= 1;
@@ -593,11 +593,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					bank.loadState = BankLoadState.LoadFailed;
 					if ((int)result == 100) // 100 == AK_InvalidBankType (using the raw int value until this package only supports Wwise 22.1 and up)
 					{
-						UnityEngine.Debug.LogWarning($"Wwise Addressable Bank Manager : Bank {bank.name} is an auto-generated bank. The Unity Wwise Addressables package only supports user-defined banks. Avoid using auto-generated banks.");
+						WwiseAddressableAdapter.Instance.WwiseWarning($"Wwise Addressable Bank Manager : Bank {bank.name} is an auto-generated bank. The Unity Wwise Addressables package only supports user-defined banks. Avoid using auto-generated banks.");
 					}
 					else
 					{
-						UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Sound Engine failed to load {bank.name} SoundBank");
+						WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager : Sound Engine failed to load {bank.name} SoundBank");
 					}
 				}
 				bank.GCHandle.Free();
@@ -611,7 +611,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 						{
 							if (streamedAsset == null)
 							{
-								UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} SoundBank is null");
+								WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager: Streaming media asset referenced in {bank.name} SoundBank is null");
 								continue;
 							}
 							assetKeys.Add(streamedAsset);
@@ -640,7 +640,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			else
 			{
-				UnityEngine.Debug.LogError($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
+				WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager : Failed to load {bank.name} SoundBank");
 				bank.loadState = BankLoadState.LoadFailed;
 			}
 
@@ -688,11 +688,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (methodName == "ExecuteAction")
 			{
-				UnityEngine.Debug.LogWarning($"Wwise Addressables: Action execution on '{eventName}' aborted because its SoundBank is not loaded. To ensure the SoundBank is loaded before the action is triggered, either load it earlier or delay the action execution.");
+				WwiseAddressableAdapter.Instance.WwiseWarning($"Wwise Addressables: Action execution on '{eventName}' aborted because its SoundBank is not loaded. To ensure the SoundBank is loaded before the action is triggered, either load it earlier or delay the action execution.");
 				return false;
 			}
 
-			UnityEngine.Debug.LogWarning($"Wwise Addressables: '{eventName}' will be delayed because its SoundBank is not loaded. To ensure the SoundBank is loaded before the Event is posted, either load it earlier or delay posting the Event.");
+			WwiseAddressableAdapter.Instance.WwiseWarning($"Wwise Addressables: '{eventName}' will be delayed because its SoundBank is not loaded. To ensure the SoundBank is loaded before the Event is posted, either load it earlier or delay posting the Event.");
 			m_EventsToFireOnBankLoad.TryAdd(eventId, new EventContainer { eventName = eventName, eventObject = eventObject, methodName = methodName, methodArgTypes = methodArgTypes, methodArgs = methodArgs });
 			return false;
 		}
@@ -713,7 +713,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void OnAutoBankLoaded(WwiseAddressableSoundBank bank)
 		{
-			UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} AutoBank -  Bank ID : {bank.soundbankId}");
+			WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager : Loaded {bank.name} AutoBank -  Bank ID : {bank.soundbankId}");
 			bank.loadState = BankLoadState.Loaded;
 			FireEventOnBankLoad(bank, false);
 		}
@@ -729,7 +729,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					if (skipAutoBank && bank.isAutoBank)
 						continue;
 
-					UnityEngine.Debug.Log($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
+					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
 					MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
 					handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
 					eventsToRemove.Add(e.Key);
@@ -747,7 +747,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (bank.loadState == BankLoadState.Loaded)
 			{
-				UnityEngine.Debug.Log($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
+				WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager : Loaded {bank.name} bank -  Bank ID : {bank.soundbankId}");
 				if (InitBankLoaded && bank.name == InitBank.name)
 				{
 					foreach (var b in GetValidBanks().Values)

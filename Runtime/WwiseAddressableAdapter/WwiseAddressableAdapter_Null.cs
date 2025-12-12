@@ -202,10 +202,40 @@ public class WwiseAddressableAdapter_Null
         LogNotImplemented();
         return string.Empty;
     }
-    
+
     public virtual string GetRootOuputPath()
     {
         LogNotImplemented();
         return string.Empty;
+    }
+    
+    public virtual void WwiseLog(string message)
+    {
+        LogNotImplemented();
+    }
+    
+    public virtual void WwiseWarning(string message)
+    {
+        LogNotImplemented();
+    }
+    
+    public virtual void WwiseError(string message)
+    {
+        LogNotImplemented();
+    }
+    
+    public virtual void WwiseLogFormat(string message, params object[] args)
+    {
+        LogNotImplemented();
+    }
+
+    public virtual void WwiseWarningFormat(string message, params object[] args)
+    {
+        LogNotImplemented();
+    }
+
+    public virtual void WwiseErrorFormat(string message, params object[] args)
+    {
+        LogNotImplemented();
     }
 }

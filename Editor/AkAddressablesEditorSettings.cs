@@ -82,8 +82,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			catch (System.Exception exception)
 			{
-				Debug.LogWarning("Could not load Wwise Addressables settings");
-				Debug.LogWarning(exception);
+				WwiseAddressableAdapter.Instance.WwiseWarning("Could not load Wwise Addressables settings");
+				WwiseAddressableAdapter.Instance.WwiseWarning(exception.ToString());
 			}
 
 			if (string.IsNullOrEmpty(settings.MetadataPath))
@@ -110,7 +110,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 			catch
 			{
-				UnityEngine.Debug.LogErrorFormat("WwiseUnity: Unable to save addressables settings to file <{0}>. Please ensure that this file path can be written to.", Path);
+				WwiseAddressableAdapter.Instance.WwiseErrorFormat("WwiseUnity: Unable to save addressables settings to file <{0}>. Please ensure that this file path can be written to.", Path);
 			}
 		}
 	}

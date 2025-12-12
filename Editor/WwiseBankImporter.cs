@@ -51,7 +51,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 				if (platform == null)
 				{
-					Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
+					WwiseAddressableAdapter.Instance.WwiseWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
 					return;
 				}
 
