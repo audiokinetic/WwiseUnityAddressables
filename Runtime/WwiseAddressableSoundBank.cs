@@ -113,6 +113,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				isAutoBank = value;
 			}
 		}
+		
+		public uint BankType
+		{
+			get { return bankType; }
+			set
+			{
+				bankType = value;
+			}
+		}
 
 		public string CurrentLanguage
 		{
@@ -198,7 +207,10 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 #endif
-			loadState = BankLoadState.Unloaded;
+			if (loadState != BankLoadState.Loading)
+			{
+				loadState = BankLoadState.Unloaded;	
+			}
 		}
 
 #if UNITY_EDITOR
