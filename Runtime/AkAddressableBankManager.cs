@@ -38,11 +38,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 {
 	public class AkAddressableBankManager
 	{
-		public static ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> m_AddressableBanks =
-			new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>();
+		public static ConcurrentDictionary<string, WwiseAddressableSoundBank> m_AddressableBanks =
+			new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
 		
 		
-		public static ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank> GetValidBanks()
+		public static ConcurrentDictionary<string, WwiseAddressableSoundBank> GetValidBanks()
 		{
 			bool needsCleanup = false;
 
@@ -58,7 +58,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (needsCleanup)
 			{
-				var newDictionary = new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>();
+				var newDictionary = new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
 
 				foreach (var kvp in m_AddressableBanks)
 				{
@@ -184,7 +184,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (Bank.loadState == BankLoadState.Loading || Bank.loadState == BankLoadState.WaitingForPrepareEvent)
 				{
 					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: {Bank.name} will be unloaded after it is done loading");
-					m_BanksToUnload.TryAdd(Bank.name, Bank.name);
+					m_BanksToUnload.TryAdd(GetBankHandleName(Bank), Bank.name);
 					return;
 				}
 
@@ -222,14 +222,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					}
 				}
 
-				m_BanksToUnload.TryRemove(Bank.name, out _);
+				m_BanksToUnload.TryRemove(GetBankHandleName(Bank), out _);
 				Bank.soundbankId = 0;
 				Bank.refCount = 0;
 				Bank.loadState = BankLoadState.Unloaded;
 
 				if (RemoveFromBankDictionary)
 				{
-					if (!m_AddressableBanks.TryRemove((Bank.name, Bank.isAutoBank), out _))
+					if (!m_AddressableBanks.TryRemove(GetBankHandleName(Bank), out _))
 					{
 #if UNITY_EDITOR
 						// Don't unnecessarily log messages when caused by domain reload
@@ -348,7 +348,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		public void ReloadAllBanks()
 		{
-			var m_banksToReload = new ConcurrentDictionary<(string, bool), WwiseAddressableSoundBank>(m_AddressableBanks);
+			var m_banksToReload = new ConcurrentDictionary<string, WwiseAddressableSoundBank>(m_AddressableBanks);
 			UnloadAllBanks();
 			UnloadInitBank();
 #if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
@@ -419,18 +419,25 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				m_BankHandles.TryRemove(InitBank.name, out var outHandle);
 			}
 		}
+
+		private static string GetBankHandleName(WwiseAddressableSoundBank bank)
+		{
+			return bank.name + bank.isAutoBank + ((AkBankTypeEnum)bank.bankType).ToString();
+		}
+
+		
 		//Todo : support decoding banks and saving decoded banks
 		public async Task LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
 		{
 			bank.decodeBank = decodeBank;
 			bank.saveDecodedBank = saveDecodedBank;
-			if (m_AddressableBanks.ContainsKey((bank.name, bank.isAutoBank)))
+			if (m_AddressableBanks.ContainsKey(GetBankHandleName(bank)))
 			{
-				m_AddressableBanks.TryGetValue((bank.name, bank.isAutoBank), out bank);
+				m_AddressableBanks.TryGetValue(GetBankHandleName(bank), out bank);
 			}
 			else if (addToBankDictionary)
 			{
-				m_AddressableBanks.TryAdd((bank.name, bank.isAutoBank), bank);
+				m_AddressableBanks.TryAdd(GetBankHandleName(bank), bank);
 			}
 			
 			if (bank.loadState == BankLoadState.Unloaded || bank.loadState == BankLoadState.WaitingForInitBankToLoad)
@@ -474,7 +481,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			if (bank.Data == null)
 			{
 				WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager : {bank.name} could not be loaded - Bank reference not set");
-				m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _);
+				m_AddressableBanks.TryRemove(GetBankHandleName(bank), out _);
 				return;
 			}
 
@@ -501,7 +508,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				else
 				{
 					WwiseAddressableAdapter.Instance.WwiseError($"Wwise Addressable Bank Manager: {bank.name} could not be loaded in {currentLanguage} language ");
-					m_AddressableBanks.TryRemove((bank.name, bank.isAutoBank), out _);
+					m_AddressableBanks.TryRemove(GetBankHandleName(bank), out _);
 					bank.loadState = BankLoadState.Unloaded;
 					bank.refCount -= 1;
 					return;
@@ -563,7 +570,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #endif
 				if (result == AKRESULT.AK_Success)
 				{
-					if (m_BankHandles.TryGetValue(bank.name, out var handle))
+					if (m_BankHandles.TryGetValue(GetBankHandleName(bank), out var handle))
 					{
 						// Bank already loaded, increment its ref count.
 						handle.IncRef();
@@ -571,7 +578,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					}
 					handle = new BankHandle(bank, false, false);
 					handle.IncRef();
-					m_BankHandles.TryAdd(bank.name, handle);
+					m_BankHandles.TryAdd(GetBankHandleName(bank), handle);
 					bank.soundbankId = bankID;
 					bank.bankType = bankType;
 					//Auto bank will set itself as loaded later
@@ -774,7 +781,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				UnloadBank(bank, ignoreRefCount : true);
 			}
 			
-			if (m_BanksToUnload.Keys.Contains(bank.name))
+			if (m_BanksToUnload.Keys.Contains(GetBankHandleName(bank)))
 			{
 				UnloadBank(bank);
 			}
