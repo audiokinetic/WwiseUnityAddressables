@@ -113,6 +113,15 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				isAutoBank = value;
 			}
 		}
+		
+		public uint BankType
+		{
+			get { return bankType; }
+			set
+			{
+				bankType = value;
+			}
+		}
 
 		public string CurrentLanguage
 		{
