@@ -453,7 +453,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				return null;
 			}
 
-			var sourceFolder = Path.Combine(AkUtilities.GetFullPath(UnityEngine.Application.dataPath, ValidPlatforms[platformName]));
+			var sourceFolder = Path.GetFullPath(Path.Combine(AkBasePathGetter.GetWwiseProjectDirectory(), ValidPlatforms[platformName]));
 			
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			var jsonFilename = Path.Combine(sourceFolder, "SoundbanksInfo.json");
