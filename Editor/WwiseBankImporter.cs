@@ -34,33 +34,38 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			ImportAssetAsync(ctx);
 		}
-
+		
 		private async Task ImportAssetAsync(AssetImportContext ctx)
 		{
-			string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
-
-			var bankAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
-			
-			string platform = bankAssetInfo.Platform;
-			string language = bankAssetInfo.Language;
-			string type = bankAssetInfo.Type;
-
-			bool isAutoBank = type != "User";
-
-			if (platform == null)
+			if (WwiseBankPostProcess.EventNamesCache.TryGetValue(ctx.assetPath, out var eventNames))
 			{
-				Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
-				return;
-			}
+				string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
+			
+				var bankAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
+				
+				string platform = bankAssetInfo.Platform;
+				string language = bankAssetInfo.Language;
+				string type = bankAssetInfo.Type;
+
+				bool isAutoBank = type != "User";
+
+				if (platform == null)
+				{
+					Debug.LogWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
+					return;
+				}
+
+				WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
+				dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
+				dataAsset.language = language;
+				dataAsset.isAutoBank = isAutoBank;
+				dataAsset.eventNames = eventNames;
 		
-			WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
-			dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
-			dataAsset.language = language;
-			dataAsset.isAutoBank = isAutoBank;
-			byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
-			dataAsset.hash = hash;
-			ctx.AddObjectToAsset(string.Format("WwiseBank_{0}{1}_{2}", platform, language, assetName), dataAsset);
-			ctx.SetMainObject(dataAsset);
+				byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
+				dataAsset.hash = hash;
+				ctx.AddObjectToAsset(string.Format("WwiseBank_{0}{1}_{2}", platform, language, assetName), dataAsset);
+				ctx.SetMainObject(dataAsset);
+			}
 		}
 	}
 }
