@@ -83,12 +83,19 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			Dictionary<string, HashSet<AddressableEntryInformation>> bankAssetsToProcess = new Dictionary<string, HashSet<AddressableEntryInformation>>();
 			HashSet<AddressableEntryInformation> streamingAssetsToProcess = new HashSet<AddressableEntryInformation>();
+			List<string> reimportedAssetsToCleanup = new List<string>();
 
 			foreach (var item in assets)
 			{
 				string extension = Path.GetExtension(item);
 				if (extension != ".bnk" && extension != ".wem")
 				{
+					continue;
+				}
+				
+				if (EventNamesCache.ContainsKey(item))
+				{
+					reimportedAssetsToCleanup.Add(item);
 					continue;
 				}
 				
@@ -119,7 +126,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
 				foreach (var platformBankAssetsToProcess in bankAssetsToProcess)
 				{
-					ImportEventNames(platformBankAssetsToProcess.Value);
+					await ImportEventNames(platformBankAssetsToProcess.Value);
 					await AddBankReferenceToAddressableBankAsset(addressableAssetCache, platformBankAssetsToProcess.Value);
 					AddAssetsToAddressablesGroup(platformBankAssetsToProcess.Value);
 				}
@@ -131,6 +138,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 				AddAssetsToAddressablesGroup(streamingAssetsToProcess);
 #endif
+			}
+
+			foreach (var assetPath in reimportedAssetsToCleanup)
+			{
+				EventNamesCache.Remove(assetPath);
 			}
 		}
 
@@ -285,8 +297,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return group;
 		}
 
-		static async void ImportEventNames(HashSet<AddressableEntryInformation> addedBankAssetsInformation)
+		internal static Dictionary<string, List<string>> EventNamesCache = new();
+
+		static async Task ImportEventNames(HashSet<AddressableEntryInformation> addedBankAssetsInformation)
 		{
+			List<string> banksToReimport = new List<string>();
+
 			foreach (var addedBankAssetInfo in addedBankAssetsInformation)
 			{
 				string bankPath = addedBankAssetInfo.AssetPath;
@@ -298,7 +314,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (platform == System.String.Empty)
 				{
 					Debug.LogWarning($"Skipping {bankPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
-					return;
+					continue;
 				}
 			
 				var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, assetName, language, type);
@@ -306,28 +322,32 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				if (soundbankInfos == null)
 				{
 					Debug.LogWarning($"Skipping {bankPath}. SoundbanksInfo.xml could not be parsed.");
-					return;
+					continue;
 				}
 
 				if (!soundbankInfos.ContainsKey((assetName,type)))
 				{
 					Debug.LogWarning($"Skipping {bankPath} as it was not parsed in SoundbanksInfo.xml. Perhaps this bank no longer exists in the wwise project?");
-					return;
+					continue;
 				}
 				var eventNames = soundbankInfos[(assetName,type)][language].events;
 				if (language !="SFX" && soundbankInfos[(assetName,type)].ContainsKey("SFX"))
 				{
 					eventNames.AddRange(soundbankInfos[(assetName,type)]["SFX"].events);
 				}
-				WwiseSoundBankAsset soundbankAsset = AssetDatabase.LoadAssetAtPath<WwiseSoundBankAsset>(bankPath);
-				if (soundbankAsset == null)
+
+				EventNamesCache[bankPath] = eventNames;
+				banksToReimport.Add(bankPath);
+			}
+
+			if (banksToReimport.Count > 0)
+			{
+				AssetDatabase.StartAssetEditing();
+				foreach (var bankPath in banksToReimport)
 				{
-					Debug.LogWarning($"WwiseSoundBankAsset for {bankPath} was not found. This points out to error when importing the soundbank.");
+					AssetDatabase.ImportAsset(bankPath, ImportAssetOptions.ForceUpdate);
 				}
-				else
-				{
-					soundbankAsset.eventNames = eventNames;
-				}
+				AssetDatabase.StopAssetEditing();
 			}
 		}
 
