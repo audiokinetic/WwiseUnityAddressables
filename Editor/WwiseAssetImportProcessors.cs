@@ -127,7 +127,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					AkAddressablesEditorUtilities.ParseAssetPath(assetPath, out platform, out language, out type);
 					bool isAutoBank = type != "User";
 
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
+					if (type == "User")
+					{
+						continue; // If a streaming media type is set to "User", it's because it's an external source, in which case there's nothing to do.
+					}
+
+#if WWISE_ADDRESSABLES_24_1_OR_LATER	
 					var soundbankInfos = AkAddressablesEditorUtilities.GetPlatformSoundbanks(platform);
 #else
 					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type);
