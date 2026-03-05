@@ -8,4 +8,4 @@ For beta users, refer to the documentation provided with the software.
 
 ## Legal
 
-Copyright © 2024 Audiokinetic Inc. All rights reserved.
+Copyright (c) 2026 Audiokinetic Inc. All rights reserved.
