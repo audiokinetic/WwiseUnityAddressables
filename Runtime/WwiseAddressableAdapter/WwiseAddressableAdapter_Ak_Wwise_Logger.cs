@@ -69,11 +69,6 @@ public class WwiseAddressableAdapter_Ak_Wwise_Logger : WwiseAddressableAdapter_N
     {
         return AkUtilities.MakeRelativePath(fromPath, toPath);
     }
-    
-    public override string GetRootOuputPath()
-    {
-        return AkWwiseEditorSettings.GetRootOutputPath();
-    }
 
     public override void WwiseLog(string message)
     {
