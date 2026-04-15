@@ -74,6 +74,7 @@ public class WwiseAddressableAdapter_Ak_Wwise_Logger : WwiseAddressableAdapter_N
     {
         return AkWwiseEditorSettings.GetRootOutputPath();
     }
+#endif
 
     public override void WwiseLog(string message)
     {
@@ -104,6 +105,5 @@ public class WwiseAddressableAdapter_Ak_Wwise_Logger : WwiseAddressableAdapter_N
     {
         WwiseLogger.ErrorFormat(message, args);
     }
-#endif
 }
 #endif //WwiseAddressableAdapter_Ak_Wwise_Logger
