@@ -416,11 +416,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				BankHandle initBankHandle = new BankHandle(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
 				initBankHandle.UnloadBank();
-				m_BankHandles.TryRemove(InitBank.name, out var outHandle);
+				m_BankHandles.TryRemove(GetBankHandleName(InitBank), out var outHandle);
 			}
 		}
 
-		private static string GetBankHandleName(WwiseAddressableSoundBank bank)
+		public static string GetBankHandleName(WwiseAddressableSoundBank bank)
 		{
 			return bank.name + bank.isAutoBank + ((AkBankTypeEnum)bank.bankType).ToString();
 		}
@@ -457,14 +457,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 			if (bank.loadState == BankLoadState.Loaded)
 			{
-				bool handleFound = m_BankHandles.TryGetValue(bank.name, out var handle);
+				bool handleFound = m_BankHandles.TryGetValue(GetBankHandleName(bank), out var handle);
 				if (!handleFound)
 				{
 					return;
 				}
 				handle.IncRef();
 				m_BankHandles.AddOrUpdate(
-					bank.name, 
+					GetBankHandleName(bank), 
 					key => new BankHandle(bank), // Add new instance if key does not exist
 					(key, existingValue) => 
 					{ 
@@ -665,14 +665,14 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			foreach (var bankToUnload in m_BanksToUnloadHandle)
 			{
 				bankToUnload.UnloadBank();
-				m_BankHandles.TryRemove(bankToUnload.Bank.name, out var outHandle);
+				m_BankHandles.TryRemove(GetBankHandleName(bankToUnload.Bank), out var outHandle);
 			}
 			
 			m_BanksToUnloadHandle.Clear();
 		}
 		public void UnloadBank(WwiseAddressableSoundBank bank, bool ignoreRefCount = true, bool removeFromBankDictionary = true)
 		{
-			if (m_BankHandles.TryGetValue(bank.name, out var handle))
+			if (m_BankHandles.TryGetValue(GetBankHandleName(bank), out var handle))
 			{
 				var handleOriginal = handle;
 				handle.DecRef(ignoreRefCount);
@@ -680,7 +680,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				{
 					handle.RemoveFromBankDictionary = removeFromBankDictionary;
 				}
-				m_BankHandles.TryUpdate(bank.name, handle, handleOriginal);
+				m_BankHandles.TryUpdate(GetBankHandleName(bank), handle, handleOriginal);
 			}
 		}
 
