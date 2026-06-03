@@ -74,5 +74,35 @@ public class WwiseAddressableAdapter_Ak_Utilities : WwiseAddressableAdapter_Null
         return AkWwiseEditorSettings.GetRootOutputPath();
     }
 #endif
+    
+    public override void WwiseLog(string message)
+    {
+        UnityEngine.Debug.Log(message);
+    }
+    
+    public override void WwiseWarning(string message)
+    {
+        UnityEngine.Debug.LogWarning(message);
+    }
+    
+    public override void WwiseError(string message)
+    {
+        UnityEngine.Debug.LogError(message);
+    }
+    
+    public override void WwiseLogFormat(string message, params object[] args)
+    {
+        UnityEngine.Debug.LogFormat(message, args);
+    }
+    
+    public override void WwiseWarningFormat(string message, params object[] args)
+    {
+        UnityEngine.Debug.LogWarningFormat(message, args);
+    }
+    
+    public override void WwiseErrorFormat(string message, params object[] args)
+    {
+        UnityEngine.Debug.LogErrorFormat(message, args);
+    }
 }
 #endif //ADDRESSABLES_API_BREAK_AK_UTILITIES || ADDRESSABLES_API_BROWSER_TREE_VIEW
