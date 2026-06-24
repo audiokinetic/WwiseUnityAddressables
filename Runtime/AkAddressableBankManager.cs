@@ -34,6 +34,10 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 #endif
 
+#if WWISE_2026_OR_LATER
+using AK.Wwise.Unity.Settings;
+#endif
+
 namespace AK.Wwise.Unity.WwiseAddressables
 {
 	public class AkAddressableBankManager
@@ -351,7 +355,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			var m_banksToReload = new ConcurrentDictionary<string, WwiseAddressableSoundBank>(m_AddressableBanks);
 			UnloadAllBanks();
 			UnloadInitBank();
-#if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
+#if WWISE_2026_OR_LATER
+			LoadInitBank(WwiseRuntimeSettings.LoadBanksAsynchronously);
+#elif WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();
@@ -390,7 +396,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			AkSoundEngine.SetCurrentLanguage(language);
 			AkSoundEngine.RenderAudio();
 #endif
-#if WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
+#if WWISE_2026_OR_LATER
+			LoadInitBank(WwiseRuntimeSettings.LoadBanksAsynchronously);
+#elif WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
 			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();

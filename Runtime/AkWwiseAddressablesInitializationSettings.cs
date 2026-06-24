@@ -19,6 +19,7 @@ Copyright (c) 2026 Audiokinetic Inc.
 
 namespace AK.Wwise.Unity.WwiseAddressables
 {
+	[System.Obsolete(AkUnitySoundEngine.Migrated_Setting_AkOption_2026_1_2)]
 	public class AkWwiseAddressablesInitializationSettings : AkWwiseInitializationSettings
 	{
 		private static AkWwiseAddressablesInitializationSettings m_Instance = null;
@@ -29,6 +30,11 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				if (m_Instance == null)
 				{
+#if WWISE_2026_OR_LATER
+					m_Instance = CreateInstance<AkWwiseAddressablesInitializationSettings>();
+					WwiseAddressableAdapter.Instance.WwiseWarning("AkWwiseInitializationSettings is deprecated (replaced with AkOption); returning default values.");
+					return m_Instance;
+#else
 #if WWISE_ADDRESSABLES_POST_2023 || WWISE_ADDRESSABLES_23_1_OR_LATER
 #if WWISE_2024_OR_LATER
 					AkUnityAddressablesSoundEngineInitialization.ResetInstance();
@@ -44,6 +50,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 					m_Instance = (AkWwiseAddressablesInitializationSettings) CreateInstance<AkWwiseAddressablesInitializationSettings>();
 					WwiseAddressableAdapter.Instance.WwiseWarning("WwiseUnity: No platform specific settings were created. Default initialization settings will be used.");
 #endif
+#endif // WWISE_2026_OR_LATER
 				}
 
 				return m_Instance;
