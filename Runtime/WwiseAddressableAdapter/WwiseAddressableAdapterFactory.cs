@@ -21,14 +21,14 @@ public static class WwiseAddressableAdapterFactory
 {
     public static WwiseAddressableAdapter_Null CreateManager()
     {
-#if ADDRESSABLES_API_BREAK_AK_UTILITIES_WWISE_LOGGER
-        return new WwiseAddressableAdapter_Ak_Wwise_Logger();
+#if ADDRESSABLES_API_BREAK_AK_INIT_SETTINGS_REVAMP
+        return new WwiseAddressableAdapter_Ak_Init_Settings_Revamp();
 #else
         WwiseAddressableAdapter_Null adapter = new WwiseAddressableAdapter_Null();
-#if ADDRESSABLES_API_BREAK_AK_UTILITIES || ADDRESSABLES_API_BROWSER_TREE_VIEW
+#if ADDRESSABLES_API_BREAK_AK_UTILITIES_WWISE_LOGGER
+        adapter = new WwiseAddressableAdapter_Ak_Wwise_Logger();
+#elif ADDRESSABLES_API_BREAK_AK_UTILITIES || ADDRESSABLES_API_BROWSER_TREE_VIEW
         adapter = new WwiseAddressableAdapter_Ak_Utilities();
-#else
-        adapter = new WwiseAddressableAdapter_Null();
 #endif
         adapter.LogMissMatchVersion();
         return adapter;
