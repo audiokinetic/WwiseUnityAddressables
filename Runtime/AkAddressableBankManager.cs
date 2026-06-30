@@ -77,8 +77,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		public static ConcurrentDictionary<string, string> m_BanksToUnload =
 			new ConcurrentDictionary<string, string>();
 
-		private static ConcurrentDictionary<uint, EventContainer> m_EventsToFireOnBankLoad =
-			new ConcurrentDictionary<uint, EventContainer>();
+		private static ConcurrentDictionary<uint, List<EventContainer>> m_EventsToFireOnBankLoad =
+			new ConcurrentDictionary<uint, List<EventContainer>>();
 		
 		private static ConcurrentDictionary<string, BankHandle>  m_BankHandles =
 			new ConcurrentDictionary<string, BankHandle>();
@@ -701,7 +701,25 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 
 			WwiseAddressableAdapter.Instance.WwiseWarning($"Wwise Addressables: '{eventName}' will be delayed because its SoundBank is not loaded. To ensure the SoundBank is loaded before the Event is posted, either load it earlier or delay posting the Event.");
-			m_EventsToFireOnBankLoad.TryAdd(eventId, new EventContainer { eventName = eventName, eventObject = eventObject, methodName = methodName, methodArgTypes = methodArgTypes, methodArgs = methodArgs });
+			
+			var eventContainer = new EventContainer 
+			{ 
+				eventName = eventName, 
+				eventObject = eventObject, 
+				methodName = methodName, 
+				methodArgTypes = methodArgTypes, 
+				methodArgs = methodArgs 
+			};
+
+			m_EventsToFireOnBankLoad.AddOrUpdate(
+				eventId,
+				new List<EventContainer> { eventContainer },
+				(key, existingList) => 
+				{
+					existingList.Add(eventContainer);
+					return existingList;
+				}
+			);
 			return false;
 		}
 
@@ -728,22 +746,27 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		private void FireEventOnBankLoad(WwiseAddressableSoundBank bank, bool skipAutoBank)
 		{
-			//Fire any events that were waiting on the bank load
 			var eventsToRemove = new List<uint>();
-			foreach (var e in m_EventsToFireOnBankLoad)
+			foreach (var eventToFire in m_EventsToFireOnBankLoad)
 			{
-				if (bank.eventNames.Contains(e.Value.eventName))
-				{
-					if (skipAutoBank && bank.isAutoBank)
-						continue;
+				if (skipAutoBank && bank.isAutoBank)
+					continue;
 
-					WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Triggering delayed event {e.Value.eventName}");
-					MethodInfo handleEvent = EventType.GetMethod(e.Value.methodName, e.Value.methodArgTypes);
-					handleEvent.Invoke(e.Value.eventObject, e.Value.methodArgs);
-					eventsToRemove.Add(e.Key);
+				foreach (var eventContainer in eventToFire.Value)
+				{
+					if (bank.eventNames.Contains(eventContainer.eventName))
+					{
+						WwiseAddressableAdapter.Instance.WwiseLog($"Wwise Addressable Bank Manager: Triggering delayed event {eventContainer.eventName}");
+						MethodInfo handleEvent = EventType.GetMethod(eventContainer.methodName, eventContainer.methodArgTypes);
+						handleEvent.Invoke(eventContainer.eventObject, eventContainer.methodArgs);
+						
+						if (!eventsToRemove.Contains(eventToFire.Key))
+						{
+							eventsToRemove.Add(eventToFire.Key);
+						}
+					}
 				}
 			}
-
 
 			foreach (var e in eventsToRemove)
 			{
