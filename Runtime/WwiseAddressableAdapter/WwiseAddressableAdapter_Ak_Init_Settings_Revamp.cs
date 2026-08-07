@@ -28,13 +28,11 @@ public class WwiseAddressableAdapter_Ak_Init_Settings_Revamp : WwiseAddressableA
     {
         if(instance != null)
         {
-            System.Action copyInitialize = instance.initializationDelegate;
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-            System.Action copyReInitialize = instance.reInitializationDelegate;
-#endif
-            System.Action copyTerminate = instance.terminationDelegate;
-            System.Action<List<AkOptionNamespace>> copyPreInitialization = instance.preInitializationDelegate;
-            System.Action copyPostTermination = instance.postTerminationDelegate;
+            System.Action copyInitialize = instance.PostInitializationDelegate;
+            System.Action copyReInitialize = instance.PostResetDelegate;
+            System.Action copyPreTerminate = instance.PreTerminationDelegate;
+            System.Action<List<AkOptionNamespace>> copyPreInitialization = instance.PreInitializationDelegate;
+            System.Action copyPostTermination = instance.PostTerminationDelegate;
             
 #if WWISE_2024_OR_LATER
             instance = new AkUnityAddressablesSoundEngineInitialization();
@@ -42,13 +40,11 @@ public class WwiseAddressableAdapter_Ak_Init_Settings_Revamp : WwiseAddressableA
 			instance = new AkAddressablesSoundEngineInitialization();
 #endif
 
-            instance.initializationDelegate = copyInitialize;
-#if WWISE_ADDRESSABLES_24_1_OR_LATER
-            instance.reInitializationDelegate = copyReInitialize;
-#endif
-            instance.terminationDelegate = copyTerminate;
-            instance.preInitializationDelegate = copyPreInitialization;
-            instance.postTerminationDelegate = copyPostTermination;
+            instance.PostInitializationDelegate = copyInitialize;
+            instance.PostResetDelegate = copyReInitialize;
+            instance.PreTerminationDelegate = copyPreTerminate;
+            instance.PreInitializationDelegate = copyPreInitialization;
+            instance.PostTerminationDelegate = copyPostTermination;
         }
         else
         {
