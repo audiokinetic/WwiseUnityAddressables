@@ -344,6 +344,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			{
 				UnloadBank(bank, ignoreRefCount: true, removeFromBankDictionary: false); ;
 			}
+			UnloadInitBank();
 			if (clearBankDictionary)
 			{
 				m_AddressableBanks.Clear();
@@ -422,9 +423,12 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			//Not using the accessor here as if the initBank wasn't set on load, there's no point trying to unload it.
 			if (initBank != null)
 			{
-				BankHandle initBankHandle = new BankHandle(InitBank, ignoreRefCount: true, removeFromBankDictionary: false);
-				initBankHandle.UnloadBank();
-				m_BankHandles.TryRemove(GetBankHandleName(InitBank), out var outHandle);
+				var handleName = GetBankHandleName(InitBank);
+				if (m_BankHandles.TryGetValue(handleName, out var initBankHandle))
+				{
+					initBankHandle.UnloadBank();
+					m_BankHandles.TryRemove(handleName, out _);
+				}
 			}
 		}
 
