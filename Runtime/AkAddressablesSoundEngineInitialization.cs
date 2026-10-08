@@ -38,9 +38,9 @@ public class AkAddressablesSoundEngineInitialization : AkSoundEngineInitializati
 	protected override void LoadInitBank()
 	{
 #if WWISE_2026_OR_LATER
-		AK.Wwise.Unity.WwiseAddressables.AkAddressableBankManager.Instance.LoadInitBank(WwiseRuntimeSettings.LoadBanksAsynchronously);
+		AK.Wwise.Unity.WwiseAddressables.AkAddressableBankManager.Instance.LoadInitBankInternal(WwiseRuntimeSettings.LoadBanksAsynchronously);
 #else
-		AK.Wwise.Unity.WwiseAddressables.AkAddressableBankManager.Instance.LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+		AK.Wwise.Unity.WwiseAddressables.AkAddressableBankManager.Instance.LoadInitBankInternal(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #endif
 	}
 	

@@ -42,6 +42,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 {
 	public class AkAddressableBankManager
 	{
+		private const string SyncLoadDeprecationMessage = "Synchronous bank loading is deprecated and will be removed in a future version. Use the overload without the loadAsync parameter, which always loads asynchronously.";
+
 		public static ConcurrentDictionary<string, WwiseAddressableSoundBank> m_AddressableBanks =
 			new ConcurrentDictionary<string, WwiseAddressableSoundBank>();
 		
@@ -357,9 +359,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			UnloadAllBanks();
 			UnloadInitBank();
 #if WWISE_2026_OR_LATER
-			LoadInitBank(WwiseRuntimeSettings.LoadBanksAsynchronously);
+			LoadInitBankInternal(WwiseRuntimeSettings.LoadBanksAsynchronously);
 #elif WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
-			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+			LoadInitBankInternal(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();
 #endif
@@ -398,9 +400,9 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			AkSoundEngine.RenderAudio();
 #endif
 #if WWISE_2026_OR_LATER
-			LoadInitBank(WwiseRuntimeSettings.LoadBanksAsynchronously);
+			LoadInitBankInternal(WwiseRuntimeSettings.LoadBanksAsynchronously);
 #elif WWISE_ADDRESSABLES_23_1_OR_LATER || WWISE_ADDRESSABLES_POST_2023
-			LoadInitBank(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
+			LoadInitBankInternal(AkWwiseInitializationSettings.Instance.LoadBanksAsynchronously);
 #else
 			LoadInitBank();
 #endif
@@ -410,11 +412,22 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public void LoadInitBank(bool loadAsync = true)
+		public void LoadInitBank()
+		{
+			LoadInitBankInternal(true);
+		}
+
+		[Obsolete(SyncLoadDeprecationMessage)]
+		public void LoadInitBank(bool loadAsync)
+		{
+			LoadInitBankInternal(loadAsync);
+		}
+
+		internal void LoadInitBankInternal(bool loadAsync)
 		{
 			if (InitBank != null)
 			{
-				LoadBank(InitBank, addToBankDictionary: false, loadAsync: loadAsync);
+				LoadBankInternal(InitBank, decodeBank: false, saveDecodedBank: false, addToBankDictionary: false, loadAsync: loadAsync);
 			}
 		}
 
@@ -439,7 +452,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 
 		
 		//Todo : support decoding banks and saving decoded banks
-		public async Task LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
+		//loadAsync is deprecated, synchronous bank loading will be removed in a future version.
+		public Task LoadBank(WwiseAddressableSoundBank bank, bool decodeBank = false, bool saveDecodedBank = false, bool addToBankDictionary = true, bool loadAsync = true)
+		{
+			return LoadBankInternal(bank, decodeBank, saveDecodedBank, addToBankDictionary, loadAsync);
+		}
+
+		private async Task LoadBankInternal(WwiseAddressableSoundBank bank, bool decodeBank, bool saveDecodedBank, bool addToBankDictionary, bool loadAsync)
 		{
 			bank.decodeBank = decodeBank;
 			bank.saveDecodedBank = saveDecodedBank;
@@ -527,17 +546,21 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				}
 			}
 
-			if (loadAsync)
-			{
-				await LoadBankAsync(bank, bankData, true);
-			}
-			else
-			{
-				LoadBankAsync(bank, bankData, false);
-			}
+			await LoadBankAsyncInternal(bank, bankData, loadAsync);
 		}
-		
-		public async Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
+
+		public Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData)
+		{
+			return LoadBankAsyncInternal(bank, bankData, loadAsync: true);
+		}
+
+		[Obsolete(SyncLoadDeprecationMessage)]
+		public Task LoadBankAsync(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
+		{
+			return LoadBankAsyncInternal(bank, bankData, loadAsync);
+		}
+
+		private async Task LoadBankAsyncInternal(WwiseAddressableSoundBank bank, AssetReferenceWwiseBankData bankData, bool loadAsync)
 		{
 			AsyncOperationHandle asyncHandle = new AsyncOperationHandle<WwiseSoundBankAsset>();
 			WwiseSoundBankAsset soundBankAsset;
