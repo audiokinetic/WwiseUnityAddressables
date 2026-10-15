@@ -1,6 +1,7 @@
 using System.Linq;
 using AK.Wwise.Unity.WwiseAddressables;
 using UnityEditor;
+using UnityEditor.Build;
 
 [InitializeOnLoad]
 public static class AddressableSymbolDefiner
@@ -9,7 +10,7 @@ public static class AddressableSymbolDefiner
 
     static AddressableSymbolDefiner()
     {
-        if (PlayerSettings.GetScriptingDefineSymbolsForGroup(BuildTargetGroup.Standalone).Contains(CurrentVersion))
+        if (PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.Standalone).Contains(CurrentVersion))
         {
             return;
         }
@@ -27,14 +28,14 @@ public static class AddressableSymbolDefiner
     }
     private static void AddDefineSymbols(BuildTargetGroup targetGroup)
     {
-        string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(targetGroup);
+        string currentDefines = PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(targetGroup));
         var currentDefineList = currentDefines.Split(';').ToList();
         
         if (!currentDefineList.Contains(CurrentVersion))
         {
             currentDefineList.Add(CurrentVersion);
             string updatedDefines = string.Join(";", currentDefineList);
-            PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, updatedDefines);
+            PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(targetGroup), updatedDefines);
         }
         
     }
