@@ -100,17 +100,17 @@ public class WwiseAddressableAdapter_Ak_Init_Settings_Revamp : WwiseAddressableA
     
     public override void WwiseLogFormat(string message, params object[] args)
     {
-        WwiseLogger.LogFormat(message, args);
+        WwiseLogger.LogFormat(LogLevel.Log, message, args);
     }
     
     public override void WwiseWarningFormat(string message, params object[] args)
     {
-        WwiseLogger.WarningFormat(message, args);
+        WwiseLogger.LogFormat(LogLevel.Warning, message, args);
     }
     
     public override void WwiseErrorFormat(string message, params object[] args)
     {
-        WwiseLogger.ErrorFormat(message, args);
+        WwiseLogger.LogFormat(LogLevel.Error, message, args);
     }
 }
 #endif //ADDRESSABLES_API_BREAK_AK_INIT_SETTINGS_REVAMP

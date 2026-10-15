@@ -303,7 +303,13 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 #endif
 
+#if UNITY_6000_4_OR_NEWER
+			var foundBank = UnityEngine.MonoBehaviour.FindObjectsByType<InitBankHolder>();
+#elif UNITY_6000_0_OR_NEWER
+			var foundBank = UnityEngine.MonoBehaviour.FindObjectsByType<InitBankHolder>(UnityEngine.FindObjectsSortMode.None);
+#else
 			var foundBank = UnityEngine.MonoBehaviour.FindObjectsOfType<InitBankHolder>();
+#endif
 			if (foundBank.Count() == 0)
 			{
 				WwiseAddressableAdapter.Instance.WwiseError("Wwise Addressables: There is no InitBankHolder in the scene, please add one for Wwise to function properly.");
