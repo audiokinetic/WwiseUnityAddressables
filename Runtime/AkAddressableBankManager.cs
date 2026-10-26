@@ -433,7 +433,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			if (InitBank != null)
 			{
-				LoadBankInternal(InitBank, decodeBank: false, saveDecodedBank: false, addToBankDictionary: false, loadAsync: loadAsync);
+				_ = LoadBankInternal(InitBank, decodeBank: false, saveDecodedBank: false, addToBankDictionary: false, loadAsync: loadAsync);
 			}
 		}
 

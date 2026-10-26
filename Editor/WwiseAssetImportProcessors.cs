@@ -72,7 +72,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 		{
 			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
-			UpdateAssetReferences(importedAssets);
+			_ = UpdateAssetReferences(importedAssets);
 			RemoveAssetReferences(deletedAssets);
 #if WWISE_ADDRESSABLES_24_1_OR_LATER
 			WarnForInvalidEntry();
@@ -146,7 +146,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		internal static async Task AddStreamedAssetsToBanks(HashSet<AddressableEntryInformation>  addedStreamingAssetsInformation)
+		internal static Task AddStreamedAssetsToBanks(HashSet<AddressableEntryInformation>  addedStreamingAssetsInformation)
 		{
 			try
 			{
@@ -166,7 +166,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 #if WWISE_ADDRESSABLES_24_1_OR_LATER	
 					var soundbankInfos = AkAddressablesEditorUtilities.GetPlatformSoundbanks(platform);
 #else
-					var soundbankInfos = await AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type);
+					var soundbankInfos = AkAddressablesEditorUtilities.ParsePlatformSoundbanks(platform, name, language, type).Result;
 #endif
 
 					if (soundbankInfos.eventToSoundBankMap.TryGetValue(name, out var bankInfos))
@@ -222,6 +222,8 @@ namespace AK.Wwise.Unity.WwiseAddressables
 				AssetDatabase.SaveAssets();
 				AssetDatabase.Refresh();
 			}
+
+			return Task.CompletedTask;
 		}
 		public static void RemoveAssetReferences(string[] deletedAssets)
 		{
