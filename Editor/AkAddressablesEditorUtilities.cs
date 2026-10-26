@@ -268,23 +268,31 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			return SoundbanksInfo[platformName];
 		}
 
-		public static async Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language, string type)
+		public static Task UpdatePlatformEntry(PlatformEntry soundBanks, string newBankName, string platformName, string language, string type)
 		{
-			WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName, type);
-			if (!sbInfo.IsValid)
+			try
 			{
-				WwiseProjectDatabase.Init(WwiseAddressableAdapter.Instance.GetRootOuputPath(), platformName, language);
-				sbInfo = new WwiseSoundBankRef(newBankName, type);
+				WwiseSoundBankRef sbInfo = new WwiseSoundBankRef(newBankName, type);
+				if (!sbInfo.IsValid)
+				{
+					WwiseProjectDatabase.Init(WwiseAddressableAdapter.Instance.GetRootOuputPath(), platformName, language);
+					sbInfo = new WwiseSoundBankRef(newBankName, type);
+				}
+				if (sbInfo.IsValid)
+				{
+					AddSoundBank(newBankName, language, type, ref soundBanks, sbInfo);
+				}
+				else
+				{
+					soundBanks.containsInvalidEntry = true;
+				}
+				soundBanks.lastParseTime = DateTime.Now.Ticks;
+				return Task.CompletedTask;
 			}
-			if (sbInfo.IsValid)
+			catch (Exception exception)
 			{
-				AddSoundBank(newBankName, language, type, ref soundBanks, sbInfo);
+				return Task.FromException(exception);
 			}
-			else
-			{
-				soundBanks.containsInvalidEntry = true;
-			}
-			soundBanks.lastParseTime = DateTime.Now.Ticks;
 		}
 #endif
 

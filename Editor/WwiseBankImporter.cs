@@ -17,6 +17,7 @@ Copyright (c) 2026 Audiokinetic Inc.
 
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
 
+using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.IO;
@@ -32,39 +33,48 @@ namespace AK.Wwise.Unity.WwiseAddressables
 	{
 		public override void OnImportAsset(AssetImportContext ctx)
 		{
-			ImportAssetAsync(ctx);
+			_ = ImportAssetAsync(ctx);
 		}
 		
-		private async Task ImportAssetAsync(AssetImportContext ctx)
+		private Task ImportAssetAsync(AssetImportContext ctx)
 		{
-			if (WwiseBankPostProcess.EventNamesCache.TryGetValue(ctx.assetPath, out var eventNames))
+			try
 			{
-				string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
-			
-				var bankAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
-				
-				string platform = bankAssetInfo.Platform;
-				string language = bankAssetInfo.Language;
-				string type = bankAssetInfo.Type;
-
-				bool isAutoBank = type != "User";
-
-				if (platform == null)
+				if (WwiseBankPostProcess.EventNamesCache.TryGetValue(ctx.assetPath, out var eventNames))
 				{
-					WwiseAddressableAdapter.Instance.WwiseWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
-					return;
+					string assetName = Path.GetFileNameWithoutExtension(ctx.assetPath);
+			
+					var bankAssetInfo = AkAddressablesEditorUtilities.ParseAssetPath(ctx.assetPath);
+				
+					string platform = bankAssetInfo.Platform;
+					string language = bankAssetInfo.Language;
+					string type = bankAssetInfo.Type;
+
+					bool isAutoBank = type != "User";
+
+					if (platform == null)
+					{
+						WwiseAddressableAdapter.Instance.WwiseWarning($"Skipping {ctx.assetPath} as its platform couldn't be determined. Make sure it is placed in the appropriate platform folder.");
+						return Task.CompletedTask;
+					}
+
+					WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
+					dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
+					dataAsset.language = language;
+					dataAsset.isAutoBank = isAutoBank;
+					dataAsset.eventNames = eventNames;
+		
+					byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
+					dataAsset.hash = hash;
+					ctx.AddObjectToAsset(string.Format("WwiseBank_{0}{1}_{2}", platform, language, assetName), dataAsset);
+					ctx.SetMainObject(dataAsset);
 				}
 
-				WwiseSoundBankAsset dataAsset = ScriptableObject.CreateInstance<WwiseSoundBankAsset>();
-				dataAsset.RawData = File.ReadAllBytes(Path.GetFullPath(ctx.assetPath));
-				dataAsset.language = language;
-				dataAsset.isAutoBank = isAutoBank;
-				dataAsset.eventNames = eventNames;
-		
-				byte[] hash = MD5.Create().ComputeHash(dataAsset.RawData);
-				dataAsset.hash = hash;
-				ctx.AddObjectToAsset(string.Format("WwiseBank_{0}{1}_{2}", platform, language, assetName), dataAsset);
-				ctx.SetMainObject(dataAsset);
+				return Task.CompletedTask;
+			}
+			catch (Exception exception)
+			{
+				return Task.FromException(exception);
 			}
 		}
 	}
